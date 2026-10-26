@@ -33,15 +33,15 @@ const AI_ENGINE_NOTES: Record<AiEngine, string> = {
 export async function getTracker(input: {
   projectId: string;
 }): Promise<AiTrackerState> {
-  const [config, competitors, recent, providerKey, project] = await Promise.all(
-    [
+  const [config, competitors, aliases, recent, providerKey, project] =
+    await Promise.all([
       repo.getConfiguration(input.projectId),
       repo.listCompetitors(input.projectId),
+      repo.listBrandAliases(input.projectId),
       repo.listRuns(input.projectId, 10),
       getOptionalEnvValue("DATAFORSEO_API_KEY"),
       repo.getProject(input.projectId),
-    ],
-  );
+    ]);
   // A run whose workflow stopped is failed here, so it never looks stuck.
   const runs = await Promise.all(recent.map((run) => reconcileAiRun(run)));
   const [observations, answered] = await Promise.all([
@@ -50,7 +50,7 @@ export async function getTracker(input: {
       ? repo.listAnsweredPromptIds(config.tracker.id)
       : Promise.resolve<string[]>([]),
   ]);
-  const brands = project ? aiBrands(project, competitors) : [];
+  const brands = project ? aiBrands(project, competitors, aliases) : [];
   const own = brands.find((b) => b.own);
   const capabilities = aiEngineSchema.options.map((engine) => ({
     engine,

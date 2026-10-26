@@ -68,6 +68,39 @@ async function fetchRobotsTxtText(
   }
 }
 
+/**
+ * Whether /llms.txt exists: true/false when the answer is definite, null when
+ * it can't be told (blocked, rate limited, network error). Same redirect,
+ * crawl-policy and 429 handling as robots.txt.
+ */
+export async function checkLlmsTxt(
+  origin: string,
+  access: CrawlerAccess | null | undefined,
+): Promise<boolean | null> {
+  try {
+    const waitForRateLimit = createRateLimitWait();
+    const fetchLlms = () =>
+      fetchFollowingRedirects(`${origin}/llms.txt`, 10_000, access);
+    let fetched = await fetchLlms();
+    if (
+      fetched?.response.status === 429 &&
+      (await waitForRateLimit(fetched.response))
+    ) {
+      fetched = await fetchLlms();
+    }
+    if (!fetched) return null;
+    const { response } = fetched;
+    await response.body?.cancel();
+    if (response.status === 404 || response.status === 410) return false;
+    if (!response.ok) return null;
+    // Soft 404s answer 200 with the HTML homepage.
+    return !(response.headers.get("content-type") ?? "").includes("text/html");
+  } catch (error) {
+    console.warn("Failed to fetch llms.txt:", error);
+    return null;
+  }
+}
+
 const MAX_DISCOVERY_REDIRECT_HOPS = 5;
 
 /**

@@ -74,6 +74,7 @@ type ResolvedOp =
       rows: { domain: string; name: string | null; notes: string | null }[];
     }
   | { kind: "deleteCompetitors"; domains: string[] }
+  | { kind: "setBrandAliases"; domain: string; aliases: string[] }
   | {
       kind: "upsertKeyPages";
       rows: {
@@ -187,6 +188,17 @@ export function resolveContextUpdates(
       );
       resolved.push({ kind: "deleteCompetitors", domains: removed });
       for (const domain of removed) domains.delete(domain);
+      return;
+    }
+
+    if ("setBrandAliases" in update) {
+      const { domain, aliases } = update.setBrandAliases;
+      resolved.push({
+        kind: "setBrandAliases",
+        domain: normalizeBacklinksTarget(domain, { scope: "domain" }).apiTarget,
+        // Case-insensitive duplicates would match identically.
+        aliases: dedupeBy(aliases, (alias) => alias.toLowerCase()),
+      });
       return;
     }
 

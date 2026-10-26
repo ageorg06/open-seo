@@ -24,6 +24,7 @@ const contextOutputSchema = z
     missingSections: z.array(z.string()),
     customSections: z.array(looseObjectOutputSchema),
     competitors: z.array(looseObjectOutputSchema),
+    brandAliases: z.array(looseObjectOutputSchema).optional(),
     keyPages: z.array(looseObjectOutputSchema),
     researchLog: z.array(looseObjectOutputSchema),
     reportTemplates: z.array(looseObjectOutputSchema),
@@ -74,7 +75,7 @@ const updateInputSchema = {
   // The batch cap lives with the server function's schema so both entry points
   // accept exactly the same patch list.
   updates: updateProjectContextSchema.shape.updates.describe(
-    'Patch ops, applied in order. Clear a standard section with {section: "current_goal", content: ""}; delete a custom section with {deleteCustomSection: "slug"}; removeCompetitors takes domains, removeKeyPages takes URLs, and removeResearchLog takes entry IDs from the project context. Adds upsert by domain/url; research-log entries are date-stamped by the server.',
+    'Patch ops, applied in order. Clear a standard section with {section: "current_goal", content: ""}; delete a custom section with {deleteCustomSection: "slug"}; removeCompetitors takes domains, removeKeyPages takes URLs, and removeResearchLog takes entry IDs from the project context. Adds upsert by domain/url; research-log entries are date-stamped by the server. {setBrandAliases: {domain, aliases}} replaces the spellings AI answers use for one brand (the project\'s own domain or a competitor\'s; max 20, 2-80 chars each; [] clears them) so the AI visibility tracker counts them as mentions.',
   ),
 } as const;
 
@@ -89,7 +90,7 @@ export function buildUpdateProjectContextTool(author: ContextAuthor) {
     config: {
       title: "Update project context",
       description:
-        "Adds, edits, or deletes a project's shared memory so the app, SAM, and other agents see it. Uses no credits. Use the current project context to find the entries to remove. Send patch ops to clear sections, deleteCustomSection, removeCompetitors, removeKeyPages, or removeResearchLog. Sections are prose (~4,000 chars max), competitors and key pages are curated shortlists (100 max each), and appendResearchLog records research already bought. Report templates are managed separately. Confirm facts with the user before storing them.",
+        "Adds, edits, or deletes a project's shared memory so the app, SAM, and other agents see it. Uses no credits. Use the current project context to find the entries to remove. Send patch ops to clear sections, deleteCustomSection, removeCompetitors, removeKeyPages, or removeResearchLog. Sections are prose (~4,000 chars max), competitors and key pages are curated shortlists (100 max each), and appendResearchLog records research already bought. setBrandAliases adds alternative brand spellings (including other scripts such as Greek) for AI visibility mention matching. Report templates are managed separately. Confirm facts with the user before storing them.",
       inputSchema: updateInputSchema,
       outputSchema: contextOutputSchema,
       annotations: {

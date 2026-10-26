@@ -25,6 +25,7 @@ import {
   GscCard,
 } from "@/client/features/dashboard/DashboardCards";
 import { Ga4Card } from "@/client/features/dashboard/Ga4Card";
+import { Ga4AiTrafficCard } from "@/client/features/dashboard/Ga4AiTrafficCard";
 import { WorkspaceMergeBanner } from "@/client/features/dashboard/WorkspaceMergeBanner";
 import { QueryError } from "@/client/components/QueryState";
 import {
@@ -125,6 +126,15 @@ export function DashboardPage({
             key: "ga4",
             hasData: ga4Connected,
             node: <Ga4Card projectId={projectId} connected={ga4Connected} />,
+          },
+        ]
+      : []),
+    ...(ga4Connected
+      ? [
+          {
+            key: "ga4AiTraffic",
+            hasData: true,
+            node: <Ga4AiTrafficCard projectId={projectId} />,
           },
         ]
       : []),

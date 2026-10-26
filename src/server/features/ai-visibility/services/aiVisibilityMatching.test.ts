@@ -105,3 +105,26 @@ describe("branded prompt cohort", () => {
     expect(aiPromptIsBranded(prompt, brand)).toBe(false);
   });
 });
+
+describe("brand aliases", () => {
+  const arcano = {
+    name: "Arcano & Co",
+    domain: "arcano.example",
+    aliases: ["Arcano and Co", "Αρκάνο", "της Αρκάνου"],
+  };
+  it.each([
+    ["Compare Arcano and Co with rivals.", true],
+    ["Compare ARCANO AND CO with rivals.", true],
+    ["Η υπηρεσία της Αρκάνου είναι γνωστή.", true],
+    ["Η ΑΡΚΆΝΟ είναι γνωστή.", true],
+    ["Arcano Group and Αρκάδι are different names.", false],
+    ["Η ΑΡΚΑΝΟ είναι γνωστή.", true],
+    ["Η Αρκανο γράφεται και χωρίς τόνο.", true],
+  ])("%s", (text, mentioned) => {
+    expect(matchAiBrand(answer(text), arcano).mentioned).toBe(mentioned);
+  });
+  it("detects aliases in prompts", () => {
+    expect(aiPromptIsBranded("Τι είναι η Αρκάνο;", arcano)).toBe(true);
+    expect(aiPromptIsBranded("Τι είναι η Αρκάδι;", arcano)).toBe(false);
+  });
+});

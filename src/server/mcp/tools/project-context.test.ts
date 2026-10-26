@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   listSections: vi.fn(),
   upsertSection: vi.fn(),
   listCompetitors: vi.fn(),
+  listBrandAliases: vi.fn(),
   listKeyPages: vi.fn(),
   listResearchLog: vi.fn(),
   listTemplates: vi.fn(),
@@ -47,6 +48,7 @@ beforeEach(() => {
   mocks.getProjectForOrganization.mockResolvedValue({ id: "project_1" });
   mocks.listSections.mockResolvedValue([]);
   mocks.listCompetitors.mockResolvedValue([]);
+  mocks.listBrandAliases.mockResolvedValue([]);
   mocks.listKeyPages.mockResolvedValue([]);
   mocks.listResearchLog.mockResolvedValue([]);
   mocks.listTemplates.mockResolvedValue([]);

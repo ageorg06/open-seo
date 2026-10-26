@@ -106,6 +106,7 @@ export const {
   crawlerCredentials,
   projectContextSections,
   projectCompetitors,
+  projectBrandAliases,
   projectKeyPages,
   projectResearchLog,
   reports,

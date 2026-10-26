@@ -536,6 +536,18 @@
         "destructive_justification": "Does not delete, overwrite, revoke access, send messages, or perform irreversible actions."
       }
     },
+    "get_google_analytics_ai_traffic": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves AI assistant referral traffic from a user-authorized Analytics property.",
+        "open_world_justification": "Reads user-authorized Google data and cannot change Google or publicly visible internet state.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, send messages, or perform irreversible actions."
+      }
+    },
     "run_site_audit": {
       "annotations": {
         "readOnlyHint": false,

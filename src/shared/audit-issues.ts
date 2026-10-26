@@ -256,6 +256,38 @@ export const AUDIT_ISSUE_TYPES = {
     howToFix:
       "Add links from higher-level pages (hubs, category pages, navigation) to flatten the path to this page.",
   },
+  "ai-search-crawlers-blocked": {
+    severity: "warning",
+    title: "AI search: robots.txt blocks live-answer crawlers",
+    explanation:
+      "robots.txt stops one or more AI search crawlers from fetching the homepage. These crawlers fetch pages live to build answers in ChatGPT, Perplexity and Claude, so blocking them removes the site from those answers and their citations. The affected user agents are listed in the details.",
+    howToFix:
+      "If you want AI answers to cite this site, remove the Disallow rules that apply to the listed user agents (check both their own groups and the `User-agent: *` group) and re-run the audit. If blocking them is intentional, no action is needed.",
+  },
+  "ai-training-crawlers-blocked": {
+    severity: "info",
+    title: "AI search: robots.txt blocks training crawlers",
+    explanation:
+      "robots.txt stops AI training crawlers from fetching the homepage. This affects model training, not live answers: ChatGPT, Perplexity and Claude can still cite the site through their separate search crawlers. This is a heads-up, not an error.",
+    howToFix:
+      "No action is needed if you don't want your content used to train models. To allow training, remove the Disallow rules for the listed user agents.",
+  },
+  "missing-llms-txt": {
+    severity: "info",
+    title: "AI search: no llms.txt",
+    explanation:
+      "The site has no /llms.txt file. llms.txt is an emerging convention that gives AI tools a short, curated summary of the site. It is not a ranking factor and no major AI search engine has confirmed it uses the file, so treat it as low priority.",
+    howToFix:
+      "Optionally publish a Markdown file at /llms.txt with a short site description and links to your most important pages (see https://llmstxt.org).",
+  },
+  "no-structured-data": {
+    severity: "info",
+    title: "AI search: no structured data (JSON-LD)",
+    explanation:
+      "The page has no JSON-LD structured data. Schema.org markup (Organization, Article, Product, FAQPage and so on) helps search engines and AI answer engines identify what the page is about and who published it.",
+    howToFix:
+      'Add a `<script type="application/ld+json">` block that describes the page with the Schema.org type that fits it, then check it with Google\'s Rich Results Test or the Schema.org validator.',
+  },
 } as const satisfies Record<string, AuditIssueDescriptor>;
 
 export type AuditIssueType = keyof typeof AUDIT_ISSUE_TYPES;

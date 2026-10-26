@@ -5,7 +5,7 @@ import {
   type RunRow,
 } from "../repositories/AiVisibilityRepository";
 import { AI_ANSWER_FAILURES, AiVisibilityError } from "./aiVisibilityErrors";
-import { aiScope } from "./aiVisibilityConfiguration";
+import { aiScope, brandAliasesFor } from "./aiVisibilityConfiguration";
 import {
   getOptionalEnvValue,
   isHostedServerAuthMode,
@@ -123,7 +123,14 @@ export async function startRun(
       );
     }
   }
-  const own = { name: project.name, domain: project.domain };
+  const own = {
+    name: project.name,
+    domain: project.domain,
+    aliases: brandAliasesFor(
+      await repo.listBrandAliases(project.id),
+      project.domain,
+    ),
+  };
   // Two attempts: once normally, once after failing a stale blocker.
   for (let attempt = 0; attempt < 2; attempt++) {
     const id = crypto.randomUUID();

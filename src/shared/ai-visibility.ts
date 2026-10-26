@@ -55,6 +55,8 @@ export interface AiPrompt {
 export interface AiBrand {
   name: string;
   domain: string;
+  /** Other spellings of the name that count as a mention. */
+  aliases: string[];
   own: boolean;
 }
 export interface AiTracker {

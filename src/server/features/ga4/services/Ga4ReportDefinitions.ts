@@ -1,3 +1,7 @@
+import {
+  GA4_AI_ASSISTANT_CHANNEL_GROUP,
+  GA4_AI_ASSISTANT_SOURCE_REGEX,
+} from "@/shared/ga4";
 import type { Ga4RunReportRequest } from "@/server/lib/ga4Client";
 
 export type Ga4Channel = "organic_search" | "all";
@@ -290,6 +294,85 @@ export function buildGa4OverviewRequest(input: {
     orderBys: input.trend
       ? [{ dimension: { dimensionName: dimensions[0]?.name ?? "date" } }]
       : [],
+    keepEmptyRows: false,
+    returnPropertyQuota: true,
+  };
+}
+
+const AI_TRAFFIC_METRICS = [
+  "sessions",
+  "engagedSessions",
+  "engagementRate",
+  "keyEvents",
+] as const;
+
+export type Ga4AiTrafficSlice =
+  | "total"
+  | "all_sessions"
+  | "assistant"
+  | "landing_page"
+  | "daily";
+
+const AI_TRAFFIC_DIMENSIONS: Record<Ga4AiTrafficSlice, string[]> = {
+  total: [],
+  all_sessions: [],
+  assistant: ["sessionSource"],
+  landing_page: ["hostName", "landingPage"],
+  daily: ["date"],
+};
+
+/** AI assistant sessions: a referrer source match or GA4's native channel. */
+function aiAssistantFilter() {
+  return {
+    orGroup: {
+      expressions: [
+        {
+          filter: {
+            fieldName: "sessionSource",
+            stringFilter: {
+              matchType: "PARTIAL_REGEXP",
+              value: GA4_AI_ASSISTANT_SOURCE_REGEX,
+              caseSensitive: false,
+            },
+          },
+        },
+        {
+          filter: {
+            fieldName: "sessionDefaultChannelGroup",
+            stringFilter: {
+              matchType: "EXACT",
+              value: GA4_AI_ASSISTANT_CHANNEL_GROUP,
+              caseSensitive: false,
+            },
+          },
+        },
+      ],
+    },
+  };
+}
+
+/** `all_sessions` is the unfiltered session total used for the AI share. */
+export function buildGa4AiTrafficRequest(input: {
+  startDate: string;
+  endDate: string;
+  slice: Ga4AiTrafficSlice;
+  limit?: number;
+}): Ga4RunReportRequest {
+  const metrics =
+    input.slice === "all_sessions" ? ["sessions"] : AI_TRAFFIC_METRICS;
+  const dimensions = AI_TRAFFIC_DIMENSIONS[input.slice];
+  return {
+    dateRanges: [{ startDate: input.startDate, endDate: input.endDate }],
+    dimensions: dimensions.map((name) => ({ name })),
+    metrics: metrics.map((name) => ({ name })),
+    dimensionFilter:
+      input.slice === "all_sessions" ? undefined : aiAssistantFilter(),
+    offset: "0",
+    limit: String(input.limit ?? (dimensions.length === 0 ? 1 : 1_000)),
+    orderBys:
+      input.slice === "daily"
+        ? [{ dimension: { dimensionName: "date" } }]
+        : [{ metric: { metricName: "sessions" }, desc: true }],
     keepEmptyRows: false,
     returnPropertyQuota: true,
   };

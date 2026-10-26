@@ -50,7 +50,14 @@ export const aiTrackerOutput = z.looseObject({
       hasResults: flag,
     }),
   ),
-  brands: z.array(z.looseObject({ name: text, domain: text, own: flag })),
+  brands: z.array(
+    z.looseObject({
+      name: text,
+      domain: text,
+      aliases: z.array(text),
+      own: flag,
+    }),
+  ),
   engines: z.array(engine),
   capabilities: z.array(
     z.looseObject({

@@ -9,6 +9,7 @@ import {
   aiSources,
   aiMatches,
   projects,
+  projectBrandAliases,
   projectCompetitors,
 } from "@/db/schema";
 import {
@@ -322,4 +323,9 @@ export const AiVisibilityRepository = {
       .select()
       .from(projectCompetitors)
       .where(eq(projectCompetitors.projectId, projectId)),
+  listBrandAliases: (projectId: string) =>
+    db
+      .select()
+      .from(projectBrandAliases)
+      .where(eq(projectBrandAliases.projectId, projectId)),
 };

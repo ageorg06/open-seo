@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   listCompetitors: vi.fn(),
   upsertCompetitors: vi.fn(),
   deleteCompetitors: vi.fn(),
+  listBrandAliases: vi.fn(),
   listKeyPages: vi.fn(),
   upsertKeyPages: vi.fn(),
   deleteKeyPages: vi.fn(),
@@ -59,6 +60,7 @@ describe("project context service", () => {
   beforeEach(() => {
     mocks.listSections.mockResolvedValue([]);
     mocks.listCompetitors.mockResolvedValue([]);
+    mocks.listBrandAliases.mockResolvedValue([]);
     mocks.listKeyPages.mockResolvedValue([]);
     mocks.listResearchLog.mockResolvedValue([]);
     mocks.listTemplates.mockResolvedValue([]);
@@ -310,6 +312,7 @@ describe("project context service", () => {
         missingSections: [],
         customSections: [],
         competitors: [],
+        brandAliases: [],
         keyPages: [],
         reportTemplates: [],
         researchLog: Array.from({ length: entryCount }, (_, index) => ({

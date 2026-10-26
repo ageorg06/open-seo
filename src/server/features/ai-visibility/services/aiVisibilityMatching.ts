@@ -19,14 +19,19 @@ export function aiMentionSpans(
     /(?:https?:\/\/|www\.)[^\s<>]+|[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[\p{L}]{2,}/giu,
     (value) => " ".repeat(value.length),
   );
-  // Match canonically equivalent Unicode without losing original UTF-16 spans.
+  // Match canonically equivalent Unicode, ignoring accents ("ΑΡΚΑΝΟ" names
+  // "Αρκάνο"; Greek capitals drop the tonos), without losing original UTF-16
+  // spans.
   let normalized = "";
   const starts: number[] = [],
     ends: number[] = [];
   let offset = 0;
   for (const character of prose) {
-    const decomposed = character.normalize("NFD");
+    const decomposed = character.normalize("NFD").replace(/\p{M}/gu, "");
     normalized += decomposed;
+    // A standalone combining accent belongs to the letter before it.
+    if (!decomposed && ends.length)
+      ends[ends.length - 1] = offset + character.length;
     for (let i = 0; i < decomposed.length; i++) {
       starts.push(offset);
       ends.push(offset + character.length);
@@ -39,8 +44,10 @@ export function aiMentionSpans(
   )) {
     const escaped = name
       .normalize("NFD")
+      .replace(/\p{M}/gu, "")
       .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
       .replace(/\s+/g, "\\s+");
+    if (!escaped) continue;
     const pattern = new RegExp(
       `(?<![\\p{L}\\p{M}\\p{N}_])${escaped}(?![\\p{L}\\p{M}\\p{N}_])`,
       "giu",
@@ -70,12 +77,22 @@ function rootDomainName(value: string) {
     : null;
 }
 
-/** Answer text naming the brand. A brand named "acme.com" is written "Acme". */
-export function aiBrandNames(brand: Pick<AiBrand, "name" | "domain">) {
+type MatchedBrand = Pick<AiBrand, "name" | "domain"> &
+  Partial<Pick<AiBrand, "aliases">>;
+
+/**
+ * Answer text naming the brand. A brand named "acme.com" is written "Acme",
+ * and its aliases are the other spellings people use. Matching ignores case
+ * and accents (Αρκάνο = ΑΡΚΑΝΟ, Café = Cafe), so aliases list inflected forms.
+ */
+export function aiBrandNames(brand: MatchedBrand) {
   const stem = rootDomainName(brand.name);
-  return stem && stem === rootDomainName(brand.domain)
-    ? [brand.name, brand.domain, stem]
-    : [brand.name, brand.domain];
+  return [
+    brand.name,
+    brand.domain,
+    ...(stem && stem === rootDomainName(brand.domain) ? [stem] : []),
+    ...(brand.aliases ?? []),
+  ];
 }
 
 /**
@@ -83,10 +100,7 @@ export function aiBrandNames(brand: Pick<AiBrand, "name" | "domain">) {
  * and cited when the answer cites a page on its domain. A generic brand name
  * can count as a mention of something else; that is accepted for simplicity.
  */
-export function matchAiBrand(
-  answer: ParsedAiAnswer,
-  brand: Pick<AiBrand, "name" | "domain">,
-) {
+export function matchAiBrand(answer: ParsedAiAnswer, brand: MatchedBrand) {
   const spans = aiMentionSpans(answer.answerText, aiBrandNames(brand));
   return {
     mentioned: spans.length > 0,
@@ -100,9 +114,10 @@ export function matchAiBrand(
 /** Prompt cohorts must include diagnostics that name the brand only by URL. */
 export function aiPromptIsBranded(
   prompt: string,
-  brand: Pick<AiBrand, "name" | "domain">,
+  brand: MatchedBrand,
 ): boolean {
-  if (aiMentionSpans(prompt, [brand.name]).length) return true;
+  if (aiMentionSpans(prompt, [brand.name, ...(brand.aliases ?? [])]).length)
+    return true;
   const domain = brand.domain
     .replace(/^www\./i, "")
     .replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

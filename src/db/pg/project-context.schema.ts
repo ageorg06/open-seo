@@ -63,6 +63,24 @@ export const projectCompetitors = pgTable(
   ],
 );
 
+// Spellings of a brand that AI answers use ("Arcano & Co", "Αρκάνο"), matched
+// as mentions alongside its name. Keyed by brand domain so the project's own
+// brand and each competitor share one table; removing a competitor deletes
+// its aliases.
+export const projectBrandAliases = pgTable(
+  "project_brand_aliases",
+  {
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    domain: text("domain").notNull(),
+    alias: text("alias").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.projectId, table.domain, table.alias] }),
+  ],
+);
+
 // A curated shortlist of pages that matter, NOT a page inventory — the
 // inventory lives in audit_pages and GSC.
 export const projectKeyPages = pgTable(

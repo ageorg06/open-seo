@@ -29,6 +29,7 @@ import {
   aiMentionSpans,
   ownedAiDomain,
 } from "./aiVisibilityMatching";
+import { brandAliasesFor } from "./aiVisibilityConfiguration";
 
 export function aiRunView(
   run: RunRow,
@@ -222,6 +223,7 @@ export async function loadAiAnswer(
     run,
     await repo.getEvidence([observation.id]),
     full,
+    await repo.listBrandAliases(input.projectId),
   );
 }
 
@@ -232,6 +234,7 @@ export async function loadAiFullAnswers(input: AiResultsInput) {
   const matches = groupByProp(evidence.matches, "observationId");
   // Rows carry the competitor-gap filter; observations do not.
   const rowIds = new Set(result.rows.map((row) => row.id));
+  const aliases = run ? await repo.listBrandAliases(input.projectId) : [];
   const answers = run
     ? observations
         .filter((observation) => rowIds.has(observation.id))
@@ -244,6 +247,7 @@ export async function loadAiFullAnswers(input: AiResultsInput) {
               matches: matches[observation.id] ?? [],
             },
             true,
+            aliases,
           ),
         )
     : [];
@@ -255,6 +259,7 @@ function answerView(
   run: RunRow,
   evidence: Evidence,
   full: boolean,
+  aliases: { domain: string; alias: string }[],
 ): AiAnswer {
   const row = rowsFor([observation], evidence)[0];
   const markdown = observation.answerMarkdown;
@@ -276,9 +281,10 @@ function answerView(
           .filter((b) => b.mentioned)
           .map((b) => ({
             domain: b.domain,
-            spans: aiMentionSpans(answerText, aiBrandNames(b)).filter(
-              (span) => span.end <= limit,
-            ),
+            spans: aiMentionSpans(answerText, [
+              ...aiBrandNames(b),
+              ...brandAliasesFor(aliases, b.domain),
+            ]).filter((span) => span.end <= limit),
           }))
       : [],
     requestedLocationCode: run.locationCode,

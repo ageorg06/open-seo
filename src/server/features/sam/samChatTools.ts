@@ -43,6 +43,7 @@ import { listSavedKeywordsTool } from "@/server/mcp/tools/list-saved-keywords";
 import { removeSavedKeywordsTool } from "@/server/mcp/tools/remove-saved-keywords";
 import { buildUpdateProjectContextTool } from "@/server/mcp/tools/project-context";
 import {
+  getGoogleAnalyticsAiTrafficTool,
   getGoogleAnalyticsAudienceBreakdownTool,
   getGoogleAnalyticsEcommercePerformanceTool,
   getGoogleAnalyticsKeyEventsTool,
@@ -455,6 +456,9 @@ export function buildSamMcpTools(
     ),
     get_google_analytics_audience_breakdown: adaptObjectTool(
       getGoogleAnalyticsAudienceBreakdownTool,
+    ),
+    get_google_analytics_ai_traffic: adaptObjectTool(
+      getGoogleAnalyticsAiTrafficTool,
     ),
     run_site_audit: adaptTool(runSiteAuditTool),
     get_audit_status: waitingAuditStatusTool(adaptTool),

@@ -1,6 +1,7 @@
 /* eslint-disable max-lines -- all GA4 MCP tools are intentionally kept in one module */
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { z } from "zod";
+import { Ga4AiTrafficService } from "@/server/features/ga4/services/Ga4AiTrafficService";
 import { Ga4MeasurementHealthService } from "@/server/features/ga4/services/Ga4MeasurementHealthService";
 import { OVERVIEW_METRICS } from "@/server/features/ga4/services/Ga4ReportDefinitions";
 import { Ga4OrganicOverviewService } from "@/server/features/ga4/services/Ga4OrganicOverviewService";
@@ -126,6 +127,19 @@ const overviewOutputSchema = analyticsEnvelopeSchema({
   quota: looseObjectOutputSchema.nullable().optional(),
 });
 
+const aiTrafficOutputSchema = analyticsEnvelopeSchema({
+  source: looseObjectOutputSchema,
+  request: looseObjectOutputSchema,
+  totals: looseObjectOutputSchema,
+  comparison: looseObjectOutputSchema,
+  assistants: z.array(z.record(z.string(), z.unknown())),
+  landingPages: z.array(z.record(z.string(), z.unknown())),
+  daily: z.array(z.record(z.string(), z.unknown())),
+  reportMetadata: looseObjectOutputSchema,
+  warnings: z.array(z.string()),
+  quota: looseObjectOutputSchema.nullable().optional(),
+});
+
 const measurementHealthOutputSchema = analyticsEnvelopeSchema({
   source: looseObjectOutputSchema,
   summary: looseObjectOutputSchema,
@@ -238,6 +252,9 @@ type Ga4OverviewResult = Awaited<
   ReturnType<typeof Ga4OrganicOverviewService.getOrganicOverview>
 >;
 type Ga4TrendRow = Ga4OverviewResult["trend"][number];
+type Ga4AiTrafficResult = Awaited<
+  ReturnType<typeof Ga4AiTrafficService.getAiTraffic>
+>;
 type Ga4MeasurementHealthResult = Awaited<
   ReturnType<typeof Ga4MeasurementHealthService.getMeasurementHealth>
 >;
@@ -437,6 +454,40 @@ const OPPORTUNITY_COLUMNS: McpTableColumn<SearchOpportunityRow>[] = [
   { header: "engagementRate", value: (row) => row.ga4?.engagementRate },
   { header: "match", value: (row) => row.joinStatus },
 ];
+
+function aiTrafficText(result: Ga4AiTrafficResult) {
+  const range = result.request.resolvedDateRange;
+  const summary = `AI assistant traffic for ${range.startDate} through ${range.endDate}.${endDateClampNote(result)}`;
+  if (result.totals.sessions === 0) {
+    return `${summary} No sessions from AI assistants in this date range.`;
+  }
+  const share =
+    result.totals.shareOfSessions === null
+      ? ""
+      : ` (${percentCell(result.totals.shareOfSessions)} of ${result.totals.allSessions} total sessions)`;
+  return [
+    `${summary} ${result.totals.sessions} AI assistant sessions${share}, ${deltaCell(result.comparison.sessions)} against the previous equal-length period.`,
+    section("By assistant", result.assistants, [
+      { header: "assistant", value: (row) => row.assistant },
+      { header: "sessions", value: (row) => row.sessions },
+      { header: "engagedSessions", value: (row) => row.engagedSessions },
+      { header: "engagementRate", value: (row) => row.engagementRate },
+      { header: "keyEvents", value: (row) => row.keyEvents },
+    ]),
+    section("Top landing pages", result.landingPages, [
+      { header: "hostName", value: (row) => row.hostName },
+      { header: "landingPage", value: (row) => row.landingPage },
+      { header: "sessions", value: (row) => row.sessions },
+      { header: "engagedSessions", value: (row) => row.engagedSessions },
+      { header: "engagementRate", value: (row) => row.engagementRate },
+      { header: "keyEvents", value: (row) => row.keyEvents },
+    ]),
+    section("Daily sessions", result.daily, [
+      { header: "date", value: (row) => row.date },
+      { header: "sessions", value: (row) => row.sessions },
+    ]),
+  ].join("");
+}
 
 function opportunityText(result: SearchOpportunityResult) {
   const range = result.request.dateRange;
@@ -813,6 +864,42 @@ export const getGoogleAnalyticsAudienceBreakdownTool = {
       breakdown: undefined,
     }),
   ),
+};
+
+const aiTrafficInputSchema = z.strictObject({
+  projectId: projectIdSchema,
+  startDate: dateSchema.optional(),
+  endDate: dateSchema.optional(),
+  limit: z.number().int().min(1).max(100).optional().default(25),
+});
+type AiTrafficArgs = z.infer<typeof aiTrafficInputSchema>;
+
+export const getGoogleAnalyticsAiTrafficTool = {
+  name: "get_google_analytics_ai_traffic",
+  config: {
+    title: "Get Google Analytics AI assistant traffic",
+    description:
+      "Read sessions referred by AI assistants (ChatGPT, Perplexity, Gemini, Copilot, Claude, DeepSeek, Grok, Meta AI, You.com, Phind, Mistral, Poe, plus GA4's AI Assistant channel group): total, share of all sessions, previous-period comparison, breakdown by assistant, top landing pages, and a daily series. Reads only the GA4 property already connected to an OpenSEO project the caller is authorized to access. The server selects the Google account and property from that project's saved connection. Read-only and uses no OpenSEO credits.",
+    inputSchema: aiTrafficInputSchema,
+    outputSchema: aiTrafficOutputSchema,
+    annotations: {
+      readOnlyHint: true,
+      openWorldHint: true,
+      destructiveHint: false,
+    },
+  },
+  handler: withMcpProjectAuth(async (args: AiTrafficArgs, context) => {
+    try {
+      const result = await Ga4AiTrafficService.getAiTraffic(args);
+      return mcpResponse({
+        text: aiTrafficText(result),
+        meta: buildProjectMeta(context, args.projectId),
+        structuredContent: result,
+      });
+    } catch (error) {
+      return errorResponse(args, context, error);
+    }
+  }),
 };
 
 const measurementHealthInputSchema = z.strictObject({

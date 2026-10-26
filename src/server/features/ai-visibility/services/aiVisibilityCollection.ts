@@ -363,7 +363,11 @@ async function runBrands(runId: string) {
   const run = await repo.getRunInternal(runId);
   const project = run ? await repo.getProject(run.projectId) : null;
   if (!run || !project) return null;
-  return aiBrands(project, await repo.listCompetitors(project.id));
+  const [competitors, aliases] = await Promise.all([
+    repo.listCompetitors(project.id),
+    repo.listBrandAliases(project.id),
+  ]);
+  return aiBrands(project, competitors, aliases);
 }
 
 /** Saves a finished answer with its citations and brand results, or fails it. */
@@ -413,7 +417,9 @@ async function saveAiAnswer(
     matches: brands.map((brand) => ({
       id: crypto.randomUUID(),
       observationId,
-      ...brand,
+      name: brand.name,
+      domain: brand.domain,
+      own: brand.own,
       ...matchAiBrand(answer, brand),
     })),
   });

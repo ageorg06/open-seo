@@ -181,6 +181,9 @@ export function runPageReporters(page: CrawledPageResult): DetectedIssue[] {
   if (page.isIndexable && page.links.length === 0) {
     report("no-outgoing-links");
   }
+  if (page.isIndexable && !page.hasStructuredData) {
+    report("no-structured-data");
+  }
 
   return issues;
 }

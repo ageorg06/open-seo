@@ -65,20 +65,38 @@ export function aiScope(config: ConfigurationRows, promptIds?: string[]) {
   };
 }
 
+/** The aliases stored for one brand domain. */
+export function brandAliasesFor(
+  aliases: { domain: string; alias: string }[],
+  domain: string,
+) {
+  return aliases.filter((a) => a.domain === domain).map((a) => a.alias);
+}
+
 /** The project's own brand, then its competitors, from shared project context. */
 export function aiBrands(
   project: { name: string; domain: string | null },
   competitors: { name: string | null; domain: string }[],
+  aliases: { domain: string; alias: string }[],
 ): AiBrand[] {
   if (!project.domain) return [];
   const brands = new Map<string, AiBrand>([
-    [project.domain, { name: project.name, domain: project.domain, own: true }],
+    [
+      project.domain,
+      {
+        name: project.name,
+        domain: project.domain,
+        aliases: brandAliasesFor(aliases, project.domain),
+        own: true,
+      },
+    ],
   ]);
   for (const c of competitors)
     if (!brands.has(c.domain))
       brands.set(c.domain, {
         name: c.name ?? c.domain,
         domain: c.domain,
+        aliases: brandAliasesFor(aliases, c.domain),
         own: false,
       });
   return [...brands.values()];

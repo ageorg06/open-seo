@@ -3,6 +3,7 @@ import { getRequest } from "@tanstack/react-start/server";
 import { waitUntil } from "cloudflare:workers";
 import { z } from "zod";
 import { shiftGa4Date } from "@/server/features/ga4/services/Ga4Dates";
+import { Ga4AiTrafficService } from "@/server/features/ga4/services/Ga4AiTrafficService";
 import { Ga4OrganicOverviewService } from "@/server/features/ga4/services/Ga4OrganicOverviewService";
 import { Ga4Service } from "@/server/features/ga4/services/Ga4Service";
 import { AppError } from "@/server/lib/errors";
@@ -88,6 +89,27 @@ function fillDailySessions(
   return days;
 }
 
+/** Not connected, a dead grant, or a lost/deleted property: dashboard cards
+ *  fall back to the connect card instead of retrying a report that can never
+ *  succeed. Other report errors are real faults. */
+function ga4CardFallback(error: unknown) {
+  if (
+    error instanceof Ga4ReportError &&
+    (error.code === "ga4_not_connected" ||
+      error.code === "ga4_reconnect_required" ||
+      error.code === "ga4_property_inaccessible")
+  ) {
+    return { connected: false as const };
+  }
+  // Google's per-property reporting quota is exhausted: an external,
+  // transient condition, not an app fault. Surface it as RATE_LIMITED so
+  // error tracking skips it — the card keeps its own "try again" copy.
+  if (error instanceof Ga4ReportError && error.code === "ga4_quota_exhausted") {
+    throw new AppError("RATE_LIMITED");
+  }
+  throw error;
+}
+
 /** The dashboard's GA4 card: organic totals vs the previous period plus a
  *  daily sessions trend, over the default (last 28 complete days) range. */
 export const getGa4DashboardReport = createServerFn({ method: "POST" })
@@ -114,27 +136,40 @@ export const getGa4DashboardReport = createServerFn({ method: "POST" })
         ),
       };
     } catch (error) {
-      // Not connected, a dead grant, or a lost/deleted property: the dashboard
-      // card falls back to the connect card instead of retrying a report that
-      // can never succeed. Other report errors are real faults.
-      if (
-        error instanceof Ga4ReportError &&
-        (error.code === "ga4_not_connected" ||
-          error.code === "ga4_reconnect_required" ||
-          error.code === "ga4_property_inaccessible")
-      ) {
-        return { connected: false as const };
-      }
-      // Google's per-property reporting quota is exhausted: an external,
-      // transient condition, not an app fault. Surface it as RATE_LIMITED so
-      // error tracking skips it — the card keeps its own "try again" copy.
-      if (
-        error instanceof Ga4ReportError &&
-        error.code === "ga4_quota_exhausted"
-      ) {
-        throw new AppError("RATE_LIMITED");
-      }
-      throw error;
+      return ga4CardFallback(error);
+    }
+  });
+
+/** The dashboard's AI assistant traffic card: sessions by assistant and top
+ *  landing pages over the default (last 28 complete days) range. */
+export const getGa4AiTrafficReport = createServerFn({ method: "POST" })
+  .middleware(requireProjectContext)
+  .validator(projectScopedSchema)
+  .handler(async ({ context }) => {
+    try {
+      const report = await Ga4AiTrafficService.getAiTraffic({
+        projectId: context.projectId,
+        limit: 10,
+      });
+      return {
+        connected: true as const,
+        totals: report.totals,
+        comparison: report.comparison.sessions,
+        assistants: report.assistants,
+        landingPages: report.landingPages.map((row) => ({
+          host: String(row.hostName ?? ""),
+          path: String(row.landingPage ?? ""),
+          sessions: overviewMetric(row, "sessions") ?? 0,
+          engagementRate: overviewMetric(row, "engagementRate"),
+          keyEvents: overviewMetric(row, "keyEvents"),
+        })),
+        trend: fillDailySessions(
+          report.daily,
+          report.request.resolvedDateRange,
+        ),
+      };
+    } catch (error) {
+      return ga4CardFallback(error);
     }
   });
 

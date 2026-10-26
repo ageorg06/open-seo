@@ -44,6 +44,7 @@ import { runRankTrackerTool } from "@/server/mcp/tools/run-rank-tracker";
 import { searchSerpLocationsTool } from "@/server/mcp/tools/search-serp-locations";
 import { getSerpResultsTool } from "@/server/mcp/tools/get-serp-results";
 import {
+  getGoogleAnalyticsAiTrafficTool,
   getGoogleAnalyticsAudienceBreakdownTool,
   getGoogleAnalyticsEcommercePerformanceTool,
   getGoogleAnalyticsKeyEventsTool,
@@ -347,6 +348,7 @@ export function createOpenSeoMcpServer(
   register(getGoogleAnalyticsEcommercePerformanceTool);
   register(getGoogleAnalyticsSiteSearchTool);
   register(getGoogleAnalyticsAudienceBreakdownTool);
+  register(getGoogleAnalyticsAiTrafficTool);
   register(runSiteAuditTool);
   register(listSiteAuditsTool);
   register(deleteSiteAuditTool);

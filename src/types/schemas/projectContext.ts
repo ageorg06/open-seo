@@ -59,6 +59,14 @@ const competitorInputSchema = z.object({
   notes: z.string().trim().max(500).optional(),
 });
 
+const BRAND_ALIAS_MAX_COUNT = 20;
+const BRAND_ALIAS_MAX_LENGTH = 80;
+
+// Case-insensitive duplicates are dropped by the service.
+const brandAliasesSchema = z
+  .array(z.string().trim().min(2).max(BRAND_ALIAS_MAX_LENGTH))
+  .max(BRAND_ALIAS_MAX_COUNT);
+
 const keyPageInputSchema = z.object({
   url: z.string().trim().min(1).max(2048),
   // Optional on purpose: an omitted role keeps the stored classification, so
@@ -90,6 +98,14 @@ const projectContextUpdateSchema = z.union([
   }),
   z.strictObject({
     removeCompetitors: z.array(z.string().trim().min(1)).min(1).max(100),
+  }),
+  // Replaces every alias of one brand: the project's own domain or a
+  // competitor's. An empty list clears them.
+  z.strictObject({
+    setBrandAliases: z.object({
+      domain: z.string().trim().min(1).max(255),
+      aliases: brandAliasesSchema,
+    }),
   }),
   z.strictObject({
     addKeyPages: z.array(keyPageInputSchema).min(1).max(100),

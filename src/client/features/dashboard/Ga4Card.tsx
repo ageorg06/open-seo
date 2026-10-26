@@ -23,7 +23,7 @@ const sessionsChartConfig = {
   sessions: { label: "Sessions", color: "var(--color-primary)" },
 } satisfies ChartConfig;
 
-function formatTrendDay(date: string): string {
+export function formatTrendDay(date: string): string {
   // Construct in local time: Date.parse("2026-08-01") is UTC midnight, which
   // toLocaleDateString would render as the previous day west of Greenwich.
   const [year, month, day] = date.split("-").map(Number);

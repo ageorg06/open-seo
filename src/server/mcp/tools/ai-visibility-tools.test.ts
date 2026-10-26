@@ -141,7 +141,9 @@ describe("AI visibility assistant tools", () => {
     expect(mocks.service.runCheck).not.toHaveBeenCalled();
   });
   it("keeps the same public evidence in text-only clients", async () => {
-    const brands = [{ name: "Ahrefs", domain: "ahrefs.com", own: false }];
+    const brands = [
+      { name: "Ahrefs", domain: "ahrefs.com", aliases: [], own: false },
+    ];
     mocks.service.getTracker.mockResolvedValue({ ...state, brands });
     const result = await definitions.getAiVisibilityTrackerTool.handler(
       { projectId },

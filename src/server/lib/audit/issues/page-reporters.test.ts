@@ -47,7 +47,7 @@ function makePage(overrides: Partial<CrawledPageResult>): CrawledPageResult {
     imagesMissingAlt: 0,
     images: [],
     links: [HEALTHY_LINK],
-    hasStructuredData: false,
+    hasStructuredData: true,
     hreflangTags: [],
     isIndexable: true,
     responseTimeMs: 200,
@@ -180,6 +180,15 @@ describe("runPageReporters", () => {
         }),
       ),
     ).toEqual(expected);
+  });
+
+  it("flags indexable HTML pages without JSON-LD", () => {
+    expect(issueTypes(makePage({ hasStructuredData: false }))).toEqual([
+      "no-structured-data",
+    ]);
+    expect(
+      issueTypes(makePage({ hasStructuredData: false, isIndexable: false })),
+    ).not.toContain("no-structured-data");
   });
 
   it("flags indexability and canonical signals", () => {

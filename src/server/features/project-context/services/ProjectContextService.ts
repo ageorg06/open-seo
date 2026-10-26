@@ -1,3 +1,4 @@
+import { groupByProp } from "remeda";
 import { runBatch } from "@/db/runBatch";
 import { ProjectContextRepository } from "@/server/features/project-context/repositories/ProjectContextRepository";
 import { resolveContextUpdates } from "@/server/features/project-context/services/contextUpdateOps";
@@ -41,6 +42,8 @@ type ProjectContext = {
     updatedAt: string;
     updatedBy: ContextAuthor;
   }[];
+  /** Spellings AI answers use for the project's own brand or a competitor, by brand domain. */
+  brandAliases: { domain: string; aliases: string[] }[];
   keyPages: {
     id: string;
     url: string;
@@ -67,14 +70,21 @@ type ProjectContext = {
 export async function getProjectContext(
   projectId: string,
 ): Promise<ProjectContext> {
-  const [sectionRows, competitors, keyPages, researchLog, reportTemplates] =
-    await Promise.all([
-      ProjectContextRepository.listSections(projectId),
-      ProjectContextRepository.listCompetitors(projectId),
-      ProjectContextRepository.listKeyPages(projectId),
-      ProjectContextRepository.listResearchLog(projectId, RESEARCH_LOG_LIMIT),
-      ReportTemplateRepository.listTemplates(projectId),
-    ]);
+  const [
+    sectionRows,
+    competitors,
+    aliasRows,
+    keyPages,
+    researchLog,
+    reportTemplates,
+  ] = await Promise.all([
+    ProjectContextRepository.listSections(projectId),
+    ProjectContextRepository.listCompetitors(projectId),
+    ProjectContextRepository.listBrandAliases(projectId),
+    ProjectContextRepository.listKeyPages(projectId),
+    ProjectContextRepository.listResearchLog(projectId, RESEARCH_LOG_LIMIT),
+    ReportTemplateRepository.listTemplates(projectId),
+  ]);
 
   const stored = new Map(sectionRows.map((row) => [row.key, row]));
   // Typed sections keep their declared order, which is also the order the
@@ -108,6 +118,9 @@ export async function getProjectContext(
         updatedBy: row.updatedBy,
       })),
     competitors,
+    brandAliases: Object.entries(groupByProp(aliasRows, "domain")).map(
+      ([domain, rows]) => ({ domain, aliases: rows.map((r) => r.alias) }),
+    ),
     keyPages,
     researchLog: researchLog.map((row) => ({
       id: row.id,
@@ -184,6 +197,13 @@ export async function applyContextUpdates(
             tx,
             projectId,
             op.domains,
+          );
+        case "setBrandAliases":
+          return ProjectContextRepository.setBrandAliases(
+            tx,
+            projectId,
+            op.domain,
+            op.aliases,
           );
         case "upsertKeyPages":
           return ProjectContextRepository.upsertKeyPages(
@@ -272,6 +292,16 @@ export function renderProjectContextMarkdown(context: ProjectContext): string {
       ].join(""),
     ),
   );
+
+  if (context.brandAliases.length > 0) {
+    pushSection(
+      lines,
+      "Brand aliases",
+      context.brandAliases.map(
+        (brand) => `- ${brand.domain}: ${brand.aliases.join(", ")}`,
+      ),
+    );
+  }
 
   pushSection(
     lines,

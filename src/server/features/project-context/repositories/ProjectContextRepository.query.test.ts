@@ -48,6 +48,7 @@ beforeAll(async () => {
       ...readFileSync("drizzle/sqlite/0042_project_memory.sql", "utf8")
         .split("--> statement-breakpoint")
         .filter((statement) => !statement.includes("DROP TABLE")),
+      readFileSync("drizzle/sqlite/0063_hesitant_ego.sql", "utf8"),
     ].join("\n"),
   );
 
@@ -63,6 +64,7 @@ beforeEach(async () => {
   await client.executeMultiple(`
     DELETE FROM project_key_pages;
     DELETE FROM project_competitors;
+    DELETE FROM project_brand_aliases;
   `);
 });
 
@@ -152,5 +154,31 @@ describe("upsertCompetitors", () => {
         notes: "user note",
       }),
     ]);
+  });
+});
+
+describe("brand aliases", () => {
+  it("replaces a brand's aliases and drops them with the competitor", async () => {
+    await runStatements(
+      ProjectContextRepository.setBrandAliases(tx, PROJECT_ID, "acme.com", [
+        "Acme and Co",
+        "Άκμε",
+      ]),
+    );
+    await runStatements(
+      ProjectContextRepository.setBrandAliases(tx, PROJECT_ID, "acme.com", [
+        "Acme Co",
+      ]),
+    );
+    expect(await ProjectContextRepository.listBrandAliases(PROJECT_ID)).toEqual(
+      [{ projectId: PROJECT_ID, domain: "acme.com", alias: "Acme Co" }],
+    );
+
+    await runStatements(
+      ProjectContextRepository.deleteCompetitors(tx, PROJECT_ID, ["acme.com"]),
+    );
+    expect(await ProjectContextRepository.listBrandAliases(PROJECT_ID)).toEqual(
+      [],
+    );
   });
 });

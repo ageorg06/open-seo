@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import type { runBatch } from "@/db/runBatch";
 import {
+  projectBrandAliases,
   projectCompetitors,
   projectContextSections,
   projectKeyPages,
@@ -135,8 +136,9 @@ function upsertCompetitors(
   );
 }
 
+// A removed competitor takes its aliases with it, so a re-added domain starts clean.
 function deleteCompetitors(tx: Tx, projectId: string, domains: string[]) {
-  return chunk(domains, VALUES_PER_DELETE).map((domainChunk) =>
+  return chunk(domains, VALUES_PER_DELETE).flatMap((domainChunk) => [
     tx
       .delete(projectCompetitors)
       .where(
@@ -145,7 +147,47 @@ function deleteCompetitors(tx: Tx, projectId: string, domains: string[]) {
           inArray(projectCompetitors.domain, domainChunk),
         ),
       ),
-  );
+    tx
+      .delete(projectBrandAliases)
+      .where(
+        and(
+          eq(projectBrandAliases.projectId, projectId),
+          inArray(projectBrandAliases.domain, domainChunk),
+        ),
+      ),
+  ]);
+}
+
+async function listBrandAliases(projectId: string) {
+  return db
+    .select()
+    .from(projectBrandAliases)
+    .where(eq(projectBrandAliases.projectId, projectId))
+    .orderBy(asc(projectBrandAliases.domain), asc(projectBrandAliases.alias));
+}
+
+// Replaces the whole alias set of one brand; an empty list clears it.
+function setBrandAliases(
+  tx: Tx,
+  projectId: string,
+  domain: string,
+  aliases: string[],
+) {
+  return [
+    tx
+      .delete(projectBrandAliases)
+      .where(
+        and(
+          eq(projectBrandAliases.projectId, projectId),
+          eq(projectBrandAliases.domain, domain),
+        ),
+      ),
+    ...chunk(aliases, ROWS_PER_INSERT).map((aliasChunk) =>
+      tx
+        .insert(projectBrandAliases)
+        .values(aliasChunk.map((alias) => ({ projectId, domain, alias }))),
+    ),
+  ];
 }
 
 async function listKeyPages(projectId: string) {
@@ -273,6 +315,8 @@ export const ProjectContextRepository = {
   listCompetitors,
   upsertCompetitors,
   deleteCompetitors,
+  listBrandAliases,
+  setBrandAliases,
   listKeyPages,
   upsertKeyPages,
   deleteKeyPages,

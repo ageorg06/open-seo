@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/client/components/ui/table";
 import { DomainFavicon } from "./DomainFavicon";
+import { BrandAliases } from "./BrandAliases";
 import { SuggestedCompetitors } from "./SuggestedCompetitors";
 import { AiQueryError, aiVisibilityKey } from "./shared";
 
@@ -137,6 +138,7 @@ export function CompetitorsTab({
           </TableBody>
         </Table>
       )}
+      <BrandAliases projectId={projectId} brands={state.brands} />
       {!runId && (
         <p className="border-t border-border p-4 text-sm text-muted-foreground">
           Run{" "}
