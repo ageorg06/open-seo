@@ -57,6 +57,12 @@ export function TrackerSetupReview({
             </dd>
           </div>
         )}
+        {review.patch.answersPerPrompt && (
+          <div>
+            <dt className="text-muted-foreground">Answers per prompt</dt>
+            <dd className="mt-1">{review.patch.answersPerPrompt}</dd>
+          </div>
+        )}
         {review.patch.prompts !== undefined && (
           <div>
             <dt className="text-muted-foreground">New prompts</dt>

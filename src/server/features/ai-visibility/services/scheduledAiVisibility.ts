@@ -2,7 +2,7 @@ import { AppError, describeError } from "@/server/lib/errors";
 import { pruneAiVisibility } from "./aiVisibilityRetention";
 import { AiVisibilityRepository as repo } from "../repositories/AiVisibilityRepository";
 import { AiVisibilityError } from "./aiVisibilityErrors";
-import { activeAiPrompts, trackerEngines } from "./aiVisibilityConfiguration";
+import { aiAnswerSlots } from "./aiVisibilityConfiguration";
 import { startRun } from "./aiVisibilityRuns";
 import { computeNextCheckAt } from "@/shared/rank-tracking";
 
@@ -33,8 +33,7 @@ export async function runScheduledAiVisibility() {
     try {
       const config = await repo.getConfiguration(tracker.projectId);
       if (!config) continue;
-      const answers =
-        activeAiPrompts(config).length * trackerEngines(tracker).length;
+      const answers = aiAnswerSlots(config).length;
       if (started > 0 && answersStarted + answers > SCHEDULED_ANSWER_BUDGET)
         break;
       // Advance the schedule before starting, so a tracker that fails or is

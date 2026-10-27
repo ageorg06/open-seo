@@ -1,6 +1,6 @@
 import { AiVisibilityRepository as repo } from "../repositories/AiVisibilityRepository";
 import { AiVisibilityError } from "./aiVisibilityErrors";
-import { aiScope } from "./aiVisibilityConfiguration";
+import { aiAnswerSlots, aiScope } from "./aiVisibilityConfiguration";
 import {
   getOptionalEnvValue,
   isHostedServerAuthMode,
@@ -70,11 +70,13 @@ export async function estimateCost(
       "Set your project's website and pass proposed prompts, or save tracking before estimating.",
     );
   const scope = aiScope(config, input.promptIds);
-  const answers = scope.prompts.flatMap(() => scope.engines);
+  const answers = aiAnswerSlots(config, input.promptIds).map((s) => s.engine);
   const hosted = await isHostedServerAuthMode();
   const cost = aiCostForAnswers(answers, hosted, "queued");
   const runNow = aiCostForAnswers(answers, hosted, "live");
   const liveEngines = scope.engines.filter(aiEngineUsesModelApi);
+  const repeated =
+    config.tracker.answersPerPrompt > 1 && liveEngines.length > 0;
   const scheduleInterval =
     input.scheduleInterval ?? current?.tracker.scheduleInterval ?? "weekly";
   const checksPerMonth = scheduledChecksPerMonth(scheduleInterval);
@@ -93,7 +95,7 @@ export async function estimateCost(
       hosted
         ? "Customer cost uses OpenSEO data credits, including the service markup."
         : "Self-hosted: cost estimates your own DataForSEO account charges. OpenSEO credits are not used.",
-      `One fresh answer per prompt and engine. The ${scheduleInterval} estimate assumes ${checksPerMonth} ${checksPerMonth === 1 ? "check" : "checks"} per month.`,
+      `${repeated ? `${config.tracker.answersPerPrompt} fresh answers per prompt for each API engine, one for the rest` : "One fresh answer per prompt and engine"}. The ${scheduleInterval} estimate assumes ${checksPerMonth} ${checksPerMonth === 1 ? "check" : "checks"} per month.`,
       ...(liveEngines.length
         ? [
             `${liveEngines.map((e) => AI_ENGINE_LABELS[e]).join(" and ")} ${liveEngines.length === 1 ? "uses" : "use"} live API pricing, which costs more per answer.`,

@@ -29,6 +29,8 @@ export const aiTrackers = sqliteTable(
       .default(false),
     locationCode: integer("location_code").notNull().default(2840),
     languageCode: text("language_code").notNull().default("en"),
+    // Answers asked per prompt and model API engine in each run.
+    answersPerPrompt: integer("answers_per_prompt").notNull().default(1),
     scheduleInterval: text("schedule_interval", {
       enum: ["daily", "weekly", "monthly"],
     })
@@ -95,8 +97,8 @@ export const aiRuns = sqliteTable(
   ],
 );
 
-// One answer per prompt and engine in a run. Rows are created pending when the
-// run starts, so the run's size is its row count.
+// One answer per prompt, engine and sample in a run. Rows are created pending
+// when the run starts, so the run's size is its row count.
 export const aiObservations = sqliteTable(
   "ai_observations",
   {
@@ -110,6 +112,8 @@ export const aiObservations = sqliteTable(
     engine: text("engine", {
       enum: ["chatgpt", "gemini", "google_ai_overview", "claude", "perplexity"],
     }).notNull(),
+    // Which of the run's repeated answers this is, from 1.
+    sample: integer("sample").notNull().default(1),
     // Whether the prompt names the project's own brand when the run started.
     branded: integer("branded", { mode: "boolean" }).notNull(),
     status: text("status", { enum: ["pending", "completed", "failed"] })
@@ -125,6 +129,7 @@ export const aiObservations = sqliteTable(
       t.runId,
       t.promptId,
       t.engine,
+      t.sample,
     ),
     index("ai_observations_prompt_idx").on(t.promptId),
   ],

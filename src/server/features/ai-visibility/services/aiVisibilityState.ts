@@ -18,7 +18,7 @@ import { aiRunView } from "./aiVisibilityResults";
 import { reconcileAiRun } from "./aiVisibilityRuns";
 
 const LIVE_NOTE =
-  "One answer from the model's official API with its own web search, at API pricing. Collects in any project market country.";
+  "Answers from the model's official API with its own web search, at API pricing; each prompt is asked as many times as answers per prompt. Collects in any project market country.";
 const AI_ENGINE_NOTES: Record<AiEngine, string> = {
   chatgpt: LIVE_NOTE,
   gemini: LIVE_NOTE,
@@ -80,6 +80,7 @@ export async function getTracker(input: {
       enabled: tracker.enabled,
       locationCode: tracker.locationCode,
       languageCode: tracker.languageCode,
+      answersPerPrompt: tracker.answersPerPrompt,
       scheduleInterval: tracker.scheduleInterval,
       nextCheckAt: tracker.nextCheckAt,
       lastSkipReason: tracker.lastSkipReason,

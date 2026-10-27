@@ -12,6 +12,8 @@ import { aiDate, AiMatchBadge } from "./shared";
 export interface PromptExecution {
   observation: AiObservationRow;
   run: Pick<AiRun, "id" | "createdAt" | "trigger">;
+  /** "Answer 2" when the run collected several answers for this engine. */
+  sampleLabel: string | null;
 }
 
 export function PromptExecutions({
@@ -47,7 +49,7 @@ export function PromptExecutions({
         className="max-h-64 overflow-y-auto sm:max-h-44"
         aria-label="Select an execution"
       >
-        {executions.map(({ observation, run }) => {
+        {executions.map(({ observation, run, sampleLabel }) => {
           const own = observation.brands.find((brand) => brand.own);
           const answered = observation.answerStatus === "answered";
           const status =
@@ -77,6 +79,11 @@ export function PromptExecutions({
                 </span>
                 <span className="text-xs">
                   <EngineLabel engine={observation.engine} />
+                  {sampleLabel && (
+                    <span className="ml-2 text-muted-foreground">
+                      {sampleLabel}
+                    </span>
+                  )}
                 </span>
                 {answered ? (
                   <>

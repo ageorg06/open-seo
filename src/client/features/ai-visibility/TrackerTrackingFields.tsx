@@ -3,12 +3,25 @@ import { Info, TriangleAlert } from "lucide-react";
 import { EngineLabel } from "./EngineLabel";
 import { Checkbox } from "@/client/components/ui/checkbox";
 import {
+  Field,
+  FieldDescription,
+  FieldLabel,
+} from "@/client/components/ui/field";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/client/components/ui/select";
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/client/components/ui/tooltip";
 import { ProjectMarketFields } from "@/client/features/projects/ProjectMarketFields";
 import {
+  AI_MAX_ANSWERS_PER_PROMPT,
   AI_UNSUPPORTED_LOCATIONS,
   aiCountryLabel,
   type AiCapability,
@@ -20,10 +33,16 @@ export type TrackerDraft = {
   locationCode: number;
   languageCode: string;
   engines: AiEngine[];
+  answersPerPrompt: number;
   topic: { name: string; prompts: string[] };
 };
 
 export const MAX_PROMPTS_PER_ADDITION = 5;
+
+const ANSWER_COUNT_ITEMS = Array.from(
+  { length: AI_MAX_ANSWERS_PER_PROMPT },
+  (_, index) => ({ value: String(index + 1), label: String(index + 1) }),
+);
 
 export function TrackerTrackingFields({
   state,
@@ -125,6 +144,33 @@ export function TrackerTrackingFields({
         "Answers from each model's API, with web search.",
         state.capabilities.filter((capability) => capability.modelApi),
       )}
+      <Field>
+        <FieldLabel htmlFor="answers-per-prompt">Answers per prompt</FieldLabel>
+        <Select
+          items={ANSWER_COUNT_ITEMS}
+          value={String(value.answersPerPrompt)}
+          onValueChange={(next) => {
+            if (next) onChange({ ...value, answersPerPrompt: Number(next) });
+          }}
+          disabled={disabled}
+        >
+          <SelectTrigger id="answers-per-prompt" className="w-24">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {ANSWER_COUNT_ITEMS.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <FieldDescription>
+          AI answers vary, so rates are steadier over several. Each API response
+          engine asks every prompt this many times per run, and cost grows to
+          match. Google AI Overviews always collects one answer.
+        </FieldDescription>
+      </Field>
       <ProjectMarketFields
         value={value}
         onChange={(market) =>

@@ -26,6 +26,18 @@ export function aiEngineUsesModelApi(
 ): engine is AiModelApiEngine {
   return engine !== "google_ai_overview";
 }
+export const AI_MAX_ANSWERS_PER_PROMPT = 5;
+/**
+ * Answers collected per prompt and engine in one run. Model API answers vary
+ * from call to call, so they repeat; an AI Overview is one Google results page
+ * and is collected once.
+ */
+export function aiAnswersPerPrompt(
+  engine: AiEngine,
+  answersPerPrompt: number,
+): number {
+  return aiEngineUsesModelApi(engine) ? answersPerPrompt : 1;
+}
 /**
  * Raw DataForSEO USD for one answer, standard queue. AI Overviews is one
  * organic SERP page ($0.0006) plus the async overview load ($0.0006).
@@ -63,6 +75,8 @@ export interface AiTracker {
   enabled: boolean;
   locationCode: number;
   languageCode: string;
+  /** Answers asked per prompt and model API engine in each run. */
+  answersPerPrompt: number;
   scheduleInterval: AiScheduleInterval;
   nextCheckAt: string | null;
   lastSkipReason: string | null;
@@ -154,6 +168,8 @@ export interface AiObservationRow {
   topic: string;
   branded: boolean;
   engine: AiEngine;
+  /** Which of the run's repeated answers this is, from 1. */
+  sample: number;
   status: AiObservationStatus;
   answerStatus: "answered" | "no_answer" | null;
   brands: AiBrandResult[];

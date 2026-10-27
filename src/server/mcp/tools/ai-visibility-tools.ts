@@ -221,7 +221,7 @@ export const saveAiVisibilityTrackerTool = defineAiTool({
   readOnly: false,
   openWorld: true,
   description:
-    "Bulk create or patch AI tracking prompts, their topics, engines, country, and language. Pause or archive a topic by pausing or archiving each of its prompts. Brand name/domain and competitors come from shared Project context; manage them there. Read the tracker first and edit prompts by ID. New trackers start on a weekly schedule; saving uses no credits, and the first paid check runs about a week later. Show the user the estimate before creating a tracker or adding prompts or engines, and pause with set_ai_visibility_schedule if they do not want scheduled checks. Do not rewrite customer prompts without direction.",
+    "Bulk create or patch AI tracking prompts, their topics, engines, answers per prompt (1-5 repeated answers per prompt for API engines, which steadies rates and multiplies cost), country, and language. Pause or archive a topic by pausing or archiving each of its prompts. Brand name/domain and competitors come from shared Project context; manage them there. Read the tracker first and edit prompts by ID. New trackers start on a weekly schedule; saving uses no credits, and the first paid check runs about a week later. Show the user the estimate before creating a tracker or adding prompts or engines, and pause with set_ai_visibility_schedule if they do not want scheduled checks. Do not rewrite customer prompts without direction.",
   execute: (s, a) => s.saveTracker(a),
   summarize: (d) =>
     `Saved AI tracking: ${d.created} created, ${d.updated} updated, ${d.skipped} skipped.`,

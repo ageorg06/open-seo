@@ -86,6 +86,7 @@ export function TrackerEditor({
     : defaultMarket;
   const defaultDraft: TrackerDraft = {
     engines,
+    answersPerPrompt: state.tracker?.answersPerPrompt ?? 1,
     ...(state.tracker
       ? {
           locationCode: state.tracker.locationCode,
@@ -118,6 +119,7 @@ export function TrackerEditor({
           ? {}
           : {
               engines: draft.engines,
+              answersPerPrompt: draft.answersPerPrompt,
               locationCode: draft.locationCode,
               languageCode: draft.languageCode,
             }),

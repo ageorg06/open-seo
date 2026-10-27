@@ -32,6 +32,7 @@ export const aiTrackerOutput = z.looseObject({
       enabled: flag,
       locationCode: count,
       languageCode: text,
+      answersPerPrompt: count,
       scheduleInterval: text,
       nextCheckAt: nullableText,
       lastSkipReason: nullableText,

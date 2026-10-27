@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AI_MAX_ANSWERS_PER_PROMPT } from "@/shared/ai-visibility";
 import { scheduleTimeSchema } from "./schedule-time";
 
 export const aiEngineSchema = z.enum([
@@ -21,6 +22,15 @@ export const aiTrackerPatchSchema = z.object({
     .min(1)
     .max(aiEngineSchema.options.length)
     .optional(),
+  answersPerPrompt: z
+    .number()
+    .int()
+    .min(1)
+    .max(AI_MAX_ANSWERS_PER_PROMPT)
+    .optional()
+    .describe(
+      "How many answers to collect for each prompt and model API engine in every run (1-5, default 1). AI answers vary between calls, so more answers per prompt make mention and citation rates steadier. Cost and answer count multiply by this value. Google AI Overviews always collects one.",
+    ),
   locationCode: z
     .number()
     .int()

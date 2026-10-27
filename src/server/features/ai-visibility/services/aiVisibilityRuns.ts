@@ -5,7 +5,7 @@ import {
   type RunRow,
 } from "../repositories/AiVisibilityRepository";
 import { AI_ANSWER_FAILURES, AiVisibilityError } from "./aiVisibilityErrors";
-import { aiScope, brandAliasesFor } from "./aiVisibilityConfiguration";
+import { aiAnswerSlots, brandAliasesFor } from "./aiVisibilityConfiguration";
 import {
   getOptionalEnvValue,
   isHostedServerAuthMode,
@@ -90,8 +90,8 @@ export async function startRun(
       "PROJECT_NOT_FOUND",
       "The selected project is not available for collection.",
     );
-  const scope = aiScope(config, promptIds);
-  if (!scope.prompts.length || !scope.engines.length)
+  const slots = aiAnswerSlots(config, promptIds);
+  if (!slots.length)
     throw new AiVisibilityError(
       "NO_ACTIVE_PROMPTS",
       "Add or unpause prompts before starting a check.",
@@ -100,7 +100,7 @@ export async function startRun(
   // checks. The tracker says why no check ran, whichever path started it.
   if (await isHostedServerAuthMode()) {
     const required = aiCostForAnswers(
-      scope.prompts.flatMap(() => scope.engines),
+      slots.map((slot) => slot.engine),
       true,
       trigger === "scheduled" ? "queued" : "live",
     ).costCredits;
@@ -145,15 +145,14 @@ export async function startRun(
           languageCode: config.tracker.languageCode,
           createdAt: new Date().toISOString(),
         },
-        scope.prompts.flatMap((prompt) =>
-          scope.engines.map((engine) => ({
-            id: crypto.randomUUID(),
-            runId: id,
-            promptId: prompt.id,
-            engine,
-            branded: aiPromptIsBranded(prompt.text, own),
-          })),
-        ),
+        slots.map(({ prompt, engine, sample }) => ({
+          id: crypto.randomUUID(),
+          runId: id,
+          promptId: prompt.id,
+          engine,
+          sample,
+          branded: aiPromptIsBranded(prompt.text, own),
+        })),
       );
     } catch (error) {
       // The one-active-run index rejected the insert, or it truly failed.
@@ -204,10 +203,9 @@ export async function runCheck(
   billing: BillingCustomerContext,
 ): Promise<AiRun> {
   const config = await requireConfiguration(input.projectId);
-  const scope = aiScope(config, input.promptIds);
   // Price the check now and refuse it above what the user approved.
   const { costUsd } = aiCostForAnswers(
-    scope.prompts.flatMap(() => scope.engines),
+    aiAnswerSlots(config, input.promptIds).map((slot) => slot.engine),
     await isHostedServerAuthMode(),
     "live",
   );

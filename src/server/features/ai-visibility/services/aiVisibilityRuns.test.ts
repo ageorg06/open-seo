@@ -64,6 +64,26 @@ describe("AI visibility checks", () => {
     expect(workflow.create).toHaveBeenCalledOnce();
   });
 
+  it("asks model API engines once per answer per prompt, but AI Overviews once", async () => {
+    const tracker = await repo.getTracker(projectId);
+    await repo.updateTracker(tracker?.id ?? "", {
+      googleAiOverview: true,
+      answersPerPrompt: 3,
+    });
+
+    const run = await runCheck({ projectId, maxCostUsd: 1 }, customer);
+
+    const rows = await repo.getObservations([run.id]);
+    expect(
+      rows.filter((o) => o.engine === "chatgpt").map((o) => o.sample),
+    ).toEqual([1, 2, 3, 1, 2, 3]);
+    expect(
+      rows
+        .filter((o) => o.engine === "google_ai_overview")
+        .map((o) => o.sample),
+    ).toEqual([1, 1]);
+  });
+
   it("fails a check whose workflow stopped, so it never blocks the next one", async () => {
     const stuck = await runCheck({ projectId, maxCostUsd: 1 }, customer);
     await testDb.db

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { sort } from "remeda";
+import { countBy, sort } from "remeda";
 import { Button } from "@/client/components/ui/button";
 import {
   Select,
@@ -41,7 +41,11 @@ export function PromptAnalysis({
 }) {
   const [period, setPeriod] = useState(() => promptPeriod());
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const executions = sort(
+  const answerCounts = countBy(
+    history.rows,
+    (row) => `${row.runId}|${row.engine}`,
+  );
+  const executions: PromptExecution[] = sort(
     history.historyRuns.flatMap((run) =>
       history.rows
         .filter(
@@ -49,7 +53,14 @@ export function PromptAnalysis({
             row.runId === run.id &&
             inPromptPeriod(row.collectedAt ?? run.createdAt, period),
         )
-        .map((observation) => ({ observation, run })),
+        .map((observation) => ({
+          observation,
+          run,
+          sampleLabel:
+            answerCounts[`${run.id}|${observation.engine}`] > 1
+              ? `Answer ${observation.sample}`
+              : null,
+        })),
     ),
     (a, b) =>
       b.run.createdAt.localeCompare(a.run.createdAt) ||
@@ -139,9 +150,11 @@ function ExecutionSelects({
     .map((value) => ({ value, label: <EngineLabel engine={value} /> }));
   const dateItems = executions
     .filter(({ observation }) => observation.engine === engine)
-    .map(({ observation, run }) => ({
+    .map(({ observation, run, sampleLabel }) => ({
       value: observation.id,
       label: `${aiDate(observation.collectedAt ?? run.createdAt)}${
+        sampleLabel ? ` · ${sampleLabel}` : ""
+      }${
         observation.status === "completed"
           ? ""
           : ` · ${aiObservationStatusLabel(observation.status)}`

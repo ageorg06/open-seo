@@ -2,6 +2,7 @@ import { sort } from "remeda";
 import type { AiTrackerPatch } from "@/types/schemas/ai-visibility";
 import {
   AI_DEFAULT_TOPIC,
+  aiAnswersPerPrompt,
   type AiBrand,
   type AiEngine,
 } from "@/shared/ai-visibility";
@@ -63,6 +64,21 @@ export function aiScope(config: ConfigurationRows, promptIds?: string[]) {
       : active,
     engines: trackerEngines(config.tracker),
   };
+}
+
+/** Every answer a check collects: one per prompt, engine and sample. */
+export function aiAnswerSlots(config: ConfigurationRows, promptIds?: string[]) {
+  const { prompts, engines } = aiScope(config, promptIds);
+  return prompts.flatMap((prompt) =>
+    engines.flatMap((engine) =>
+      Array.from(
+        {
+          length: aiAnswersPerPrompt(engine, config.tracker.answersPerPrompt),
+        },
+        (_, index) => ({ prompt, engine, sample: index + 1 }),
+      ),
+    ),
+  );
 }
 
 /** The aliases stored for one brand domain. */
@@ -138,6 +154,7 @@ export function projectAiConfiguration(input: {
           enabled: true,
           ...engineColumns(["chatgpt", "gemini"]),
           ...input.projectMarket,
+          answersPerPrompt: 1,
           scheduleInterval: "weekly",
           nextCheckAt: firstWeeklyCheckAt(),
           lastSkipReason: null,
@@ -147,6 +164,8 @@ export function projectAiConfiguration(input: {
       };
   if (patch.engines)
     Object.assign(rows.tracker, engineColumns([...new Set(patch.engines)]));
+  if (patch.answersPerPrompt)
+    rows.tracker.answersPerPrompt = patch.answersPerPrompt;
   applyMarket(rows, patch, !previous, trackerEngines(rows.tracker));
   const counts = applyPrompts(rows, patch, now);
   const unarchived = rows.prompts.filter((p) => !p.archived);

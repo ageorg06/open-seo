@@ -218,9 +218,11 @@ export function PromptInventory({
                             <EngineResult
                               key={engine}
                               engine={engine}
-                              row={promptRows?.find(
-                                (row) => row.engine === engine,
-                              )}
+                              rows={
+                                promptRows?.filter(
+                                  (row) => row.engine === engine,
+                                ) ?? []
+                              }
                             />
                           ))}
                         </div>
@@ -375,29 +377,36 @@ function PromptRate({
 
 function EngineResult({
   engine,
-  row,
+  rows,
 }: {
   engine: AiEngine;
-  row: AiObservationRow | undefined;
+  /** Every answer this run collected for the prompt and engine. */
+  rows: AiObservationRow[];
 }) {
-  const own = row?.brands.find((brand) => brand.own);
-  const result = !row
+  const answered = rows.filter((row) => row.answerStatus === "answered");
+  const mentioned = answered.filter((row) =>
+    row.brands.some((brand) => brand.own && brand.mentioned),
+  ).length;
+  const first = rows[0];
+  const result = !first
     ? "No result available"
-    : row.status === "failed"
-      ? "Failed"
-      : row.status === "pending"
-        ? "Running"
-        : row.answerStatus === "no_answer"
-          ? aiNoAnswerLabel(engine)
-          : row.answerStatus !== "answered"
-            ? "Answer unavailable"
-            : own?.mentioned
-              ? "Mentioned"
-              : "Not mentioned";
+    : answered.length > 1
+      ? `Mentioned in ${mentioned} of ${answered.length} answers`
+      : answered.length === 1
+        ? mentioned
+          ? "Mentioned"
+          : "Not mentioned"
+        : first.status === "failed"
+          ? "Failed"
+          : first.status === "pending"
+            ? "Running"
+            : first.answerStatus === "no_answer"
+              ? aiNoAnswerLabel(engine)
+              : "Answer unavailable";
   return (
     <span
       title={`${AI_ENGINE_LABELS[engine]}: ${result}`}
-      className={`inline-flex h-6 items-center text-xs ${result === "Mentioned" ? "text-success" : result === "Failed" ? "text-destructive" : "text-muted-foreground"}`}
+      className={`inline-flex h-6 items-center text-xs ${mentioned > 0 ? "text-success" : result === "Failed" ? "text-destructive" : "text-muted-foreground"}`}
     >
       <EngineLabel engine={engine} />
     </span>

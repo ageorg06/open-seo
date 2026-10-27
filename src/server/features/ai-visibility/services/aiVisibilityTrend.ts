@@ -68,7 +68,8 @@ const citationRate: Rate = (c) =>
 
 /**
  * A cell is one prompt, engine, collection market and own-brand identity.
- * New prompts, engines, markets or brand edits start new cells.
+ * New prompts, engines, markets or brand edits start new cells. Answers per
+ * prompt is not part of the key: more answers only steady a cell's rate.
  */
 function cellKey(
   row: TrendRow,

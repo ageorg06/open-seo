@@ -68,6 +68,7 @@ function rowsFor(
     topic: o.topic,
     branded: o.branded,
     engine: o.engine,
+    sample: o.sample,
     status: o.status,
     answerStatus:
       o.status !== "completed"

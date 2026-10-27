@@ -93,6 +93,7 @@ const observationColumns = {
   runId: aiObservations.runId,
   promptId: aiObservations.promptId,
   engine: aiObservations.engine,
+  sample: aiObservations.sample,
   branded: aiObservations.branded,
   status: aiObservations.status,
   collectedAt: aiObservations.collectedAt,
@@ -126,6 +127,7 @@ async function getObservations(
       asc(aiPrompts.topic),
       asc(aiPrompts.text),
       asc(aiObservations.engine),
+      asc(aiObservations.sample),
     );
 }
 

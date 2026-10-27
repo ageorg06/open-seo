@@ -102,7 +102,7 @@ In chat, lead with one sentence a founder would repeat, built from the evidence,
 - Observations come from the selected prompts, engines, market and run. They are not all AI conversations, a ranking, or traffic. Say which run and coverage they come from.
 - A cited page appearing next to a competitor does not prove the page mentions that competitor. Read it before claiming so.
 - Recommendations are hypotheses grounded in evidence, not promises of future mentions or citations. Do not invent visibility scores, share of voice or sentiment.
-- Few prompts mean fragile rates: one answer per prompt and engine. With fewer than about ten neutral prompts, say the sample is small and treat the findings as directions to check, not conclusions.
+- Few prompts mean fragile rates: the tracker's answers per prompt (default 1, up to 5 for API engines; AI Overviews is always 1) sets how many answers back each prompt's rate, so with one answer a prompt is a single sample. With fewer than about ten neutral prompts, say the sample is small and treat the findings as directions to check, not conclusions.
 - An `explore_prompt` answer is one sample, outside the tracked runs. Use it to explain why a page gets cited; never fold it into mention or citation rates.
 - Use `get_ai_visibility_trend` for any claim about change, and only when it reports `comparable`.
 - Prompt research shows questions and sources, not how often anything is asked in AI; never estimate AI demand, visits or revenue.
