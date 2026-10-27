@@ -136,7 +136,7 @@ const LLM_RESPONSE_USD: Record<
 };
 
 /** Estimated USD for one live LLM response at the 4096-token output cap. */
-export function llmResponseUsd(
+function llmResponseUsd(
   modelSlug: LlmResponseModelSlug,
   webSearch: boolean,
 ): number {

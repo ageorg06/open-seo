@@ -17,13 +17,11 @@ import {
 import { aiRunView } from "./aiVisibilityResults";
 import { reconcileAiRun } from "./aiVisibilityRuns";
 
-const CONSUMER_NOTE =
-  "One consumer-site answer. Collects in any project market country except unsupportedLocationCodes.";
 const LIVE_NOTE =
-  "One answer from the model's live API with web search, at live API pricing. Collects in any project market country except unsupportedLocationCodes.";
+  "One answer from the model's official API with its own web search, at API pricing. Collects in any project market country.";
 const AI_ENGINE_NOTES: Record<AiEngine, string> = {
-  chatgpt: CONSUMER_NOTE,
-  gemini: CONSUMER_NOTE,
+  chatgpt: LIVE_NOTE,
+  gemini: LIVE_NOTE,
   google_ai_overview:
     "The AI Overview on one Google results page. A page without an AI Overview is a no-answer result, not a missing brand.",
   claude: LIVE_NOTE,

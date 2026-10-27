@@ -172,13 +172,13 @@ export class AiVisibilityWorkflow extends WorkflowEntrypoint<
             `[ai-visibility] ${runId} post-${index}: ${describeError(error)}`,
           );
         }
-    // Claude and Perplexity answers come from the model API on every run.
-    // Queued answers process meanwhile, and each model batch is followed by
-    // one free read of them.
+    // Model API answers come from OpenRouter on every run. Queued answers
+    // process meanwhile, and each model batch is followed by one free read of
+    // them.
     for (const [index, batch] of plan.modelBatches.entries()) {
       try {
         await pgStep(step, `model-${index}`, LIVE_STEP, () =>
-          collectAiModelBatch(runId, customer, plan.market, batch),
+          collectAiModelBatch(runId, batch),
         );
       } catch (error) {
         // Its unsaved answers fail at finalize; the other batches continue.

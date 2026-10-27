@@ -1,9 +1,7 @@
 import {
-  getIsoCountryCode,
   LOCATION_OPTIONS,
   SERP_LANGUAGE_OPTIONS,
 } from "@/shared/keyword-locations";
-import { supportsWebSearchCountry } from "@/shared/prompt-search-countries";
 
 export type AiEngine =
   | "chatgpt"
@@ -19,14 +17,14 @@ export const AI_ENGINE_LABELS: Record<AiEngine, string> = {
   perplexity: "Perplexity",
 };
 /**
- * Engines DataForSEO has no LLM Scraper for. Their answers come from the live
- * LLM Responses API, at live API pricing. Each name is also its API model slug.
+ * Engines asked through their official model API (via OpenRouter) with the
+ * provider's own web search, at API pricing. Each name is its API engine.
  */
-export type AiModelApiEngine = Extract<AiEngine, "claude" | "perplexity">;
+export type AiModelApiEngine = Exclude<AiEngine, "google_ai_overview">;
 export function aiEngineUsesModelApi(
   engine: AiEngine,
 ): engine is AiModelApiEngine {
-  return engine === "claude" || engine === "perplexity";
+  return engine !== "google_ai_overview";
 }
 /**
  * Raw DataForSEO USD for one answer, standard queue. AI Overviews is one
@@ -297,27 +295,16 @@ export interface AiTrend {
 }
 
 /**
- * Countries from the shared market list that DataForSEO cannot collect for an
- * engine. Keep in sync with each engine's DataForSEO locations endpoint.
+ * Countries from the shared market list an engine cannot collect for. Model
+ * API engines are asked without a country, so they collect everywhere.
  */
 export const AI_UNSUPPORTED_LOCATIONS: Record<AiEngine, readonly number[]> = {
-  chatgpt: [2275, 2344, 2831, 2832, 2833, 2862],
+  chatgpt: [],
   gemini: [],
   google_ai_overview: [],
-  claude: liveUnsupportedLocations("claude"),
-  perplexity: liveUnsupportedLocations("perplexity"),
+  claude: [],
+  perplexity: [],
 };
-
-/** Countries a live engine's web search does not accept. */
-function liveUnsupportedLocations(engine: AiModelApiEngine): number[] {
-  return LOCATION_OPTIONS.filter(
-    (option) =>
-      !supportsWebSearchCountry(
-        engine,
-        getIsoCountryCode(option.code).toUpperCase(),
-      ),
-  ).map((option) => option.code);
-}
 
 /** "In progress" while a collection is unfinished. */
 export function aiObservationStatusLabel(status: AiObservationStatus): string {

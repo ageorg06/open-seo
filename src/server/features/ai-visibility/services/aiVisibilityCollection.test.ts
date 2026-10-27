@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { aiObservations, projectCompetitors } from "@/db/schema";
-import { DataforseoChargedTaskError } from "@/server/lib/dataforseo/envelope";
 import { AppError } from "@/server/lib/errors";
 import { AiVisibilityRepository as repo } from "../repositories/AiVisibilityRepository";
 import {
@@ -13,7 +12,7 @@ import {
 } from "./aiVisibilityCollection";
 import { configuration, customer } from "./aiVisibilityTestFixtures";
 
-const { testDb, dataforseo } = await vi.hoisted(async () => {
+const { testDb, dataforseo, openRouterAnswer } = await vi.hoisted(async () => {
   const { createAiVisibilityTestDb } = await import("../aiVisibilityTestDb");
   return {
     testDb: await createAiVisibilityTestDb(),
@@ -21,8 +20,8 @@ const { testDb, dataforseo } = await vi.hoisted(async () => {
       trackingTaskPost: vi.fn(),
       trackingLiveBatch: vi.fn(),
       fetchTaskResult: vi.fn(),
-      llmResponse: vi.fn(),
     },
+    openRouterAnswer: vi.fn(),
   };
 });
 vi.mock("cloudflare:workers", () => ({ env: { DATABASE_PROVIDER: "d1" } }));
@@ -40,14 +39,20 @@ vi.mock("@/server/lib/dataforseo", () => ({
     aiSearch: {
       trackingTaskPost: dataforseo.trackingTaskPost,
       trackingLiveBatch: dataforseo.trackingLiveBatch,
-      llmResponse: dataforseo.llmResponse,
     },
   }),
   fetchAiTrackingTaskResult: dataforseo.fetchTaskResult,
 }));
-vi.mock("@/server/lib/dataforseo/llm-models", () => ({
-  resolveLatestLlmModelName: async () => "claude-sonnet-5",
+vi.mock("../providers/openrouterAnswer", () => ({
+  fetchOpenRouterAnswer: openRouterAnswer,
 }));
+
+const answer = (markdown: string, citations: object[] = []) => ({
+  answerMarkdown: markdown,
+  answerText: markdown,
+  citations,
+  collectedAt: null,
+});
 
 const runId = "run";
 const market = { locationCode: 2840, languageCode: "en" };
@@ -215,14 +220,13 @@ describe("AI answer collection", () => {
   });
 
   it("saves each model answer without waiting for slower calls", async () => {
-    dataforseo.llmResponse.mockImplementation(
-      ({ userPrompt }: { userPrompt: string }) =>
-        userPrompt === "Best rank tracker?"
-          ? new Promise(() => {})
-          : Promise.resolve({ items: [] }),
+    openRouterAnswer.mockImplementation((_engine: string, prompt: string) =>
+      prompt === "Best rank tracker?"
+        ? new Promise(() => {})
+        : Promise.resolve(answer("OpenSEO")),
     );
 
-    void collectAiModelBatch(runId, customer, market, {
+    void collectAiModelBatch(runId, {
       engine: "claude",
       tasks: [
         { tag: "answer-0", prompt: "Which SEO tools?" },
@@ -241,41 +245,31 @@ describe("AI answer collection", () => {
   });
 
   it("saves model answers with their cited pages and fails the calls that error", async () => {
-    dataforseo.llmResponse.mockImplementation(
-      async ({ userPrompt }: { userPrompt: string }) => {
-        if (userPrompt === "Best rank tracker?") throw new Error("Timed out");
-        return {
-          items: [
-            {
-              type: "message",
-              sections: [
-                {
-                  text: "Try OpenSEO.",
-                  annotations: [
-                    { url: "https://openseo.so/", title: "OpenSEO" },
-                  ],
-                },
-              ],
-            },
-          ],
-        };
+    openRouterAnswer.mockImplementation(
+      async (_engine: string, prompt: string) => {
+        if (prompt === "Best rank tracker?") throw new Error("Timed out");
+        return answer("Try OpenSEO.", [
+          {
+            url: "https://openseo.so/",
+            domain: "openseo.so",
+            title: "OpenSEO",
+            position: 1,
+          },
+        ]);
       },
     );
 
-    await collectAiModelBatch(runId, customer, market, {
-      engine: "claude",
+    await collectAiModelBatch(runId, {
+      engine: "chatgpt",
       tasks: [
         { tag: "answer-0", prompt: "Which SEO tools?" },
         { tag: "answer-1", prompt: "Best rank tracker?" },
       ],
     });
 
-    expect(dataforseo.llmResponse).toHaveBeenCalledWith(
-      expect.objectContaining({
-        modelSlug: "claude",
-        webSearch: true,
-        webSearchCountryCode: "US",
-      }),
+    expect(openRouterAnswer).toHaveBeenCalledWith(
+      "chatgpt",
+      "Which SEO tools?",
     );
     expect(await repo.getObservation("answer-0")).toMatchObject({
       status: "completed",
@@ -290,22 +284,17 @@ describe("AI answer collection", () => {
     });
   });
 
-  it("asks a model answer again only when DataForSEO returned the failed task", async () => {
+  it("asks a model answer again only on a provider outage", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout"] });
-    dataforseo.llmResponse.mockImplementation(
-      async ({ userPrompt }: { userPrompt: string }) => {
-        if (userPrompt === "Best rank tracker?")
-          throw new AppError("UPSTREAM_UNAVAILABLE", "DataForSEO HTTP 502");
-        throw new DataforseoChargedTaskError(
-          "Internal Server Error.",
-          { path: [], costUsd: 0 },
-          false,
-          "UPSTREAM_UNAVAILABLE",
-        );
+    openRouterAnswer.mockImplementation(
+      async (_engine: string, prompt: string) => {
+        if (prompt === "Best rank tracker?")
+          throw new AppError("INTERNAL_ERROR", "OpenRouter 400");
+        throw new AppError("UPSTREAM_UNAVAILABLE", "OpenRouter 502");
       },
     );
 
-    const collecting = collectAiModelBatch(runId, customer, market, {
+    const collecting = collectAiModelBatch(runId, {
       engine: "claude",
       tasks: [
         { tag: "answer-0", prompt: "Which SEO tools?" },
@@ -315,18 +304,18 @@ describe("AI answer collection", () => {
     await vi.runAllTimersAsync();
     await collecting;
 
-    expect(dataforseo.llmResponse).toHaveBeenCalledTimes(4);
+    expect(openRouterAnswer).toHaveBeenCalledTimes(4);
     expect(await repo.getObservation("answer-0")).toMatchObject({
       status: "failed",
       error: "UPSTREAM_UNAVAILABLE",
     });
     expect(await repo.getObservation("answer-1")).toMatchObject({
       status: "failed",
-      error: "UPSTREAM_UNAVAILABLE",
+      error: "INTERNAL_ERROR",
     });
   });
 
-  it("sends Claude to the model API, not the live scraper, on a manual run", async () => {
+  it("sends ChatGPT and Claude to the model API, not the scraper, on a manual run", async () => {
     const [{ promptId }] = await repo.getObservations([runId]);
     await testDb.db.insert(aiObservations).values({
       id: "answer-claude",
@@ -338,12 +327,16 @@ describe("AI answer collection", () => {
 
     const plan = await prepareAiRun(runId);
 
-    expect(plan.modelBatches).toMatchObject([
-      { engine: "claude", tasks: [{ tag: "answer-claude" }] },
-    ]);
-    expect(plan.batches.flat()).not.toContainEqual(
-      expect.objectContaining({ engine: "claude" }),
+    expect(plan.modelBatches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ engine: "chatgpt" }),
+        expect.objectContaining({
+          engine: "claude",
+          tasks: [expect.objectContaining({ tag: "answer-claude" })],
+        }),
+      ]),
     );
+    expect(plan.batches.flat()).toEqual([]);
   });
 
   it("collects a manual run live, saving answers and failing rejected calls", async () => {

@@ -19,18 +19,15 @@ import {
 // AI visibility tracking endpoints. Scheduled runs use the standard queue:
 // task_post, then a free task_get/advanced by task ID. Manual runs use
 // live/advanced, one prompt per call.
-// https://docs.dataforseo.com/v3/ai_optimization/chat_gpt/llm_scraper/overview/
 // https://docs.dataforseo.com/v3/serp/google/organic/overview/
 const AI_TRACKING_ENDPOINTS: Record<
   Exclude<AiEngine, AiModelApiEngine>,
   string
 > = {
-  chatgpt: "/v3/ai_optimization/chat_gpt/llm_scraper",
-  gemini: "/v3/ai_optimization/gemini/llm_scraper",
   google_ai_overview: "/v3/serp/google/organic",
 };
 
-/** Live engines have no LLM Scraper: their answers come from the live API. */
+/** Model API engines are asked through OpenRouter, never queued here. */
 function trackingEndpoint(engine: AiEngine): string {
   if (aiEngineUsesModelApi(engine))
     throw new AppError("INTERNAL_ERROR", `${engine} answers cannot be queued`);

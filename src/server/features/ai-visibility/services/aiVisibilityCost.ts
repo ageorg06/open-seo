@@ -13,7 +13,7 @@ import {
   type AiCostEstimate,
   type AiEngine,
 } from "@/shared/ai-visibility";
-import { llmResponseUsd } from "@/server/lib/dataforseo/pricing";
+import { OPENROUTER_ANSWER_USD } from "../providers/openrouterAnswer";
 import {
   AUTUMN_SEO_DATA_CREDITS_PER_USD,
   creditsForProviderUsd,
@@ -23,11 +23,11 @@ import type { EstimateAiCostInput } from "@/types/schemas/ai-visibility";
 import { projectPatch } from "./aiVisibilityMutation";
 
 /**
- * Raw DataForSEO USD for one answer. Claude and Perplexity always use the
- * model API. The other engines are live on Run now and queued otherwise.
+ * Raw provider USD for one answer. Model API engines are OpenRouter calls; AI
+ * Overviews is live on Run now and queued otherwise.
  */
 function aiAnswerUsd(engine: AiEngine, mode: "live" | "queued") {
-  if (aiEngineUsesModelApi(engine)) return llmResponseUsd(engine, true);
+  if (aiEngineUsesModelApi(engine)) return OPENROUTER_ANSWER_USD[engine];
   return mode === "live" ? AI_LIVE_RECORD_COST_USD : AI_RECORD_COST_USD;
 }
 

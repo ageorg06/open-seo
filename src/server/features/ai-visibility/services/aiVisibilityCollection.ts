@@ -7,11 +7,8 @@ import {
   type AiTrackingAnswer,
   type PostedAiTrackingTask,
 } from "@/server/lib/dataforseo";
-import { DataforseoChargedTaskError } from "@/server/lib/dataforseo/envelope";
-import { resolveLatestLlmModelName } from "@/server/lib/dataforseo/llm-models";
 import { AppError, asAppError } from "@/server/lib/errors";
 import type { ErrorCode } from "@/shared/error-codes";
-import { getIsoCountryCode } from "@/shared/keyword-locations";
 import {
   aiEngineUsesModelApi,
   type AiBrand,
@@ -20,9 +17,9 @@ import {
 import { AiVisibilityRepository as repo } from "../repositories/AiVisibilityRepository";
 import {
   parseDataforseoAnswer,
-  parseLlmResponseAnswer,
   type ParsedAiAnswer,
 } from "../providers/dataforseoEvidence";
+import { fetchOpenRouterAnswer } from "../providers/openrouterAnswer";
 import { aiBrands } from "./aiVisibilityConfiguration";
 import { AI_ANSWER_FAILURES } from "./aiVisibilityErrors";
 import { matchAiBrand } from "./aiVisibilityMatching";
@@ -247,49 +244,31 @@ async function fetchLiveAnswers(
 }
 
 /**
- * Asks each prompt of a Claude or Perplexity batch through the metered model
- * API client, which bills each answer, and saves each answer as soon as it
- * arrives, so a slow call that hits the step timeout cannot discard answers
- * already paid for. An answer that DataForSEO's backend failed is asked again,
- * up to AI_ANSWER_ATTEMPTS. Model answers have no language setting: only the
- * country guides the web search.
+ * Asks each prompt of a model API batch through OpenRouter and saves each
+ * answer as soon as it arrives, so a slow call that hits the step timeout
+ * cannot discard answers already paid for. A rate limit or provider outage is
+ * asked again, up to AI_ANSWER_ATTEMPTS. The engine's own web search picks the
+ * sources; no country is sent.
  */
 export async function collectAiModelBatch(
   runId: string,
-  customer: BillingCustomerContext,
-  market: AiRunMarket,
   batch: AiTaskBatch,
 ): Promise<void> {
-  const modelSlug = batch.engine;
-  if (!aiEngineUsesModelApi(modelSlug))
-    throw new AppError("INTERNAL_ERROR", `${modelSlug} has no model API batch`);
+  const engine = batch.engine;
+  if (!aiEngineUsesModelApi(engine))
+    throw new AppError("INTERNAL_ERROR", `${engine} has no model API batch`);
   const brands = await runBrands(runId);
   if (!brands) return;
-  const client = createDataforseoClient(customer);
-  const modelName = await resolveLatestLlmModelName(modelSlug);
-  const country = getIsoCountryCode(market.locationCode).toUpperCase();
   await Promise.all(
     batch.tasks.map(async (task) => {
       for (let attempt = 1; ; attempt++) {
         try {
-          const result = await client.aiSearch.llmResponse({
-            modelSlug,
-            modelName,
-            userPrompt: task.prompt,
-            webSearch: true,
-            // Saving the tracker rejects countries the engine cannot search.
-            webSearchCountryCode: country,
-            maxOutputTokens: MODEL_MAX_OUTPUT_TOKENS,
-          });
-          await saveAiAnswer(task.tag, parseLlmResponseAnswer(result), brands);
+          const answer = await fetchOpenRouterAnswer(engine, task.prompt);
+          await saveAiAnswer(task.tag, answer, brands);
           return;
         } catch (cause) {
-          // A charged task error is a task DataForSEO returned with its cost.
-          if (
-            cause instanceof DataforseoChargedTaskError &&
-            cause.code === "UPSTREAM_UNAVAILABLE" &&
-            attempt < AI_ANSWER_ATTEMPTS
-          ) {
+          const code = asAppError(cause)?.code ?? "INTERNAL_ERROR";
+          if (code === "UPSTREAM_UNAVAILABLE" && attempt < AI_ANSWER_ATTEMPTS) {
             await waitBeforeRetry();
             continue;
           }
@@ -297,7 +276,6 @@ export async function collectAiModelBatch(
             `[ai-visibility] ${runId} answer ${task.tag} failed:`,
             cause,
           );
-          const code = asAppError(cause)?.code ?? "INTERNAL_ERROR";
           await repo.failPendingObservations(runId, code, [task.tag]);
           return;
         }
@@ -305,12 +283,6 @@ export async function collectAiModelBatch(
     }),
   );
 }
-
-/**
- * Like Prompt Explorer: reasoning models count hidden reasoning against this
- * budget, and a smaller one can leave the visible answer empty.
- */
-const MODEL_MAX_OUTPUT_TOKENS = 4096;
 
 /** Concurrent task_get requests within a collect step. */
 const TASK_GET_CONCURRENCY = 25;

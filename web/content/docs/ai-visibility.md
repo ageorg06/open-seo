@@ -12,7 +12,7 @@ Add your website, then complete the setup shown on the AI visibility pages. Rese
 ## Research, explore, and track
 
 - **Prompt Research:** analyze a keyword to find the questions people ask about it, with ChatGPT's answers and cited sources. Research currently covers US English. The questions come from DataForSEO's dataset, built mostly from Google "People also ask" questions; they are not logged ChatGPT prompts, and OpenSEO does not estimate how often they are asked in AI.
-- **Prompt Explorer:** try one prompt in ChatGPT, or add Claude, Gemini, and Perplexity to compare answers and available citations. These are API model answers and can differ from consumer-site answers collected by tracking.
+- **Prompt Explorer:** try one prompt in ChatGPT, or add Claude, Gemini, and Perplexity to compare answers and available citations. Explorer answers are single samples and are not part of tracked mention or citation rates.
 - **Prompt Tracking:** save exact questions under topics, select engines and a market, then run a check or enable daily, weekly, or monthly tracking. Editing a question's wording starts a new question, so earlier answers keep the wording they were collected for. ChatGPT and Gemini are selected by default; Google AI Overviews, Claude, and Perplexity are also supported. Enabling tracking starts an initial check.
 - **Competitors and Citations:** open these tabs in Prompt Tracking to review saved brand mentions, competitor appearances, and cited pages. Competitors come from shared Project context. Your brand counts as mentioned when its name, domain, or one of its aliases appears in an answer, and as cited when the answer links to your site. Add other spellings (for example "Acme and Co", or the name in Greek with its inflected forms) as brand aliases under Brand aliases on the Competitors tab; matching ignores case and accents, and aliases apply to new checks. A failed check is not evidence that your brand was absent.
 
@@ -22,11 +22,11 @@ The trend chart includes manual and scheduled checks, using the latest finished 
 
 Prompt research costs about $0.25 in credits per keyword. Explorer charges actual usage for uncached answers. Tracking shows a cost estimate before a check or schedule is started and bills each check as it collects answers. Run now collects live answers, which usually arrive within a minute and cost more per answer than scheduled checks. Checks stop when your credits run out.
 
-Tracking collects ChatGPT and Gemini answers from their consumer sites. Claude and Perplexity have no consumer-site collection, so every check, scheduled or Run now, asks their model API at live API pricing, which costs more per answer.
+Tracking asks ChatGPT, Gemini, Claude, and Perplexity through each model's official API via OpenRouter, with the provider's own web search, on every check, scheduled or Run now. These are API answers, so they can differ from what someone sees in the consumer app. Google AI Overviews come from DataForSEO's Google results.
 
 On hosted OpenSEO, Prompt Research and Prompt Explorer require the paid plan; prompt tracking only needs credits. Setup research uses available credits and is billed after completion.
 
-Self-hosted users pay providers directly: set `DATAFORSEO_API_KEY` for research and answer collection, and `OPENROUTER_API_KEY` for setup research, Prompt Research, and generated prompt suggestions. See the [self-hosting guides](/docs/self-hosting).
+Self-hosted users pay providers directly: set `DATAFORSEO_API_KEY` for research and AI Overviews, and `OPENROUTER_API_KEY` for tracked ChatGPT, Gemini, Claude, and Perplexity answers, setup research, Prompt Research, and generated prompt suggestions. See the [self-hosting guides](/docs/self-hosting).
 
 ## Use your assistant
 

@@ -29,25 +29,13 @@ describe("AI tracker market", () => {
       project({ locationCode: 2124, languageCode: "fr" }, before).rows.tracker,
     ).toMatchObject({ locationCode: 2124, languageCode: "fr" });
   });
-  it("rejects markets the selected engines cannot collect in", () => {
+  it("rejects a language the chosen country does not support", () => {
     expect(() => project({ locationCode: 2100, languageCode: "en" })).toThrow(
       /Bulgaria supports languageCode bg/,
     );
-    expect(() => project({ locationCode: 2275 })).toThrow(
-      /ChatGPT cannot collect answers in Palestine/,
-    );
-    expect(() =>
-      project(
-        { engines: ["chatgpt"] },
-        project({ engines: ["gemini"], locationCode: 2275 }).rows,
-      ),
-    ).toThrow(/ChatGPT cannot collect answers in Palestine/);
   });
-  it("starts in the US when the project market is not collectable and none was chosen", () => {
+  it("keeps the project market for model API engines, which collect anywhere", () => {
     const palestine = { locationCode: 2275, languageCode: "ar" };
-    expect(project({}, null, palestine).rows.tracker).toMatchObject(US);
-    expect(
-      project({ engines: ["gemini"] }, null, palestine).rows.tracker,
-    ).toMatchObject(palestine);
+    expect(project({}, null, palestine).rows.tracker).toMatchObject(palestine);
   });
 });
