@@ -80,7 +80,11 @@ export async function fetchOpenRouterAnswer(
   if (!response.ok) {
     const transient = response.status === 429 || response.status >= 500;
     throw new AppError(
-      transient ? "UPSTREAM_UNAVAILABLE" : "INTERNAL_ERROR",
+      response.status === 402
+        ? "INSUFFICIENT_CREDITS"
+        : transient
+          ? "UPSTREAM_UNAVAILABLE"
+          : "INTERNAL_ERROR",
       `OpenRouter ${response.status}: ${(await response.text()).slice(0, 300)}`,
     );
   }

@@ -77,4 +77,8 @@ it("marks rate limits as retryable and bad requests as final", async () => {
   await expect(fetchOpenRouterAnswer("claude", "Q")).rejects.toMatchObject({
     code: "INTERNAL_ERROR",
   });
+  reply(402, { error: "This request would exceed your available credits" });
+  await expect(fetchOpenRouterAnswer("claude", "Q")).rejects.toMatchObject({
+    code: "INSUFFICIENT_CREDITS",
+  });
 });
